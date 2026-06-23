@@ -132,6 +132,10 @@ export default function LiveCall({
       // Downsampling to 16kHz happens in startMicrophoneNode; output buffers specify their own rate.
       inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Resume immediately while inside the user gesture (button click).
+      // Mobile browsers (Android/iOS) block AudioContext.resume() outside of a gesture.
+      await inputAudioCtxRef.current.resume();
+      await outputAudioCtxRef.current.resume();
       nextStartTimeRef.current = 0;
 
       const session = await createGeminiSession(
