@@ -62,15 +62,18 @@ export default function LiveCall({
   const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const nextStartTimeRef = useRef<number>(0);
   const transcriptsEndRef = useRef<HTMLDivElement | null>(null);
+  const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const callStartTimeRef = useRef<number>(0);
   const micSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   // Guards against React StrictMode double-invoking the effect in dev mode
   const sessionStartedRef = useRef(false);
 
-  // Auto-scroll transcripts
+  // Auto-scroll only inside the transcript container, not the whole page
   useEffect(() => {
-    transcriptsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
   }, [transcripts]);
 
   // Connect on mount
@@ -377,40 +380,40 @@ export default function LiveCall({
           )}
           
           {/* Шапка звонка */}
-          <div className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${
+          <div className={`flex justify-between items-center p-3 sm:p-4 rounded-2xl border transition-all ${
             sessionStatus === "active"
               ? "bg-[#4E4E37] border-white/10"
               : "bg-brand-light-gray/30 border-brand-sand/60"
           }`}>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif font-bold uppercase text-sm ${
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="relative shrink-0">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-serif font-bold uppercase text-sm ${
                   sessionStatus === "active" ? "bg-brand-terracotta text-white" : "bg-brand-olive text-brand-cream"
                 }`}>
                   {teacher.name[0]}
                 </div>
                 {sessionStatus === "active" && (
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-brand-terracotta border-2 border-brand-olive rounded-full animate-pulse" />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-brand-terracotta border-2 border-brand-olive rounded-full animate-pulse" />
                 )}
               </div>
-              <div>
-                <h4 className={`font-serif font-bold italic text-sm flex items-center gap-1.5 leading-none ${
+              <div className="min-w-0">
+                <h4 className={`font-serif font-bold italic text-sm leading-none truncate ${
                     sessionStatus === "active" ? "text-white" : "text-brand-olive"
                   }`}>
-                  Разговор с {teacher.name}
-                  <span className={`text-[10px] font-sans font-normal ${sessionStatus === "active" ? "text-white/60" : "text-brand-dark/50"}`}>({teacher.russianName})</span>
+                  {teacher.name}
+                  <span className={`hidden sm:inline text-[10px] font-sans font-normal ml-1 ${sessionStatus === "active" ? "text-white/60" : "text-brand-dark/50"}`}>({teacher.russianName})</span>
                 </h4>
-                <p className={`text-[10px] font-medium truncate mt-1 max-w-[200px] ${sessionStatus === "active" ? "text-white/60" : "text-brand-dark/50"}`}>
-                  {topic} • {level}
+                <p className={`text-[10px] font-medium truncate mt-0.5 ${sessionStatus === "active" ? "text-white/60" : "text-brand-dark/50"}`}>
+                  {level}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <Clock className={`w-4 h-4 ${sessionStatus === "active" ? "text-brand-terracotta" : "text-brand-terracotta"}`} />
-              <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-xl border ${
-                sessionStatus === "active" 
-                  ? "bg-brand-terracotta text-white border-brand-terracotta/40" 
+            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+              <Clock className="w-3.5 h-3.5 text-brand-terracotta" />
+              <span className={`font-mono text-sm font-bold px-2 py-1 rounded-xl border ${
+                sessionStatus === "active"
+                  ? "bg-brand-terracotta text-white border-brand-terracotta/40"
                   : "bg-brand-light-gray text-brand-dark border-brand-sand/65"
               }`}>
                 {formatTime(durationSeconds)}
@@ -561,7 +564,7 @@ export default function LiveCall({
             <h4 className="text-xs font-bold text-brand-olive uppercase tracking-wider">Субтитры занятия (Live)</h4>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-3 space-y-3 text-xs pr-1 scrollbar-thin">
+          <div ref={transcriptContainerRef} className="flex-1 overflow-y-auto py-3 space-y-3 text-xs pr-1 scrollbar-thin">
             {transcripts.length === 0 ? (
               <div className="text-center text-brand-dark/40 py-10 italic">Разговор пока не начался...</div>
             ) : (
