@@ -20,10 +20,12 @@ export interface GeminiSessionCallbacks {
   onSaveNote: (note: string) => void;
   onEndCall: () => void;
   onMicReady: () => void;
+  onDisconnected?: (reason: string) => void;
 }
 
 export interface GeminiLiveSession {
   sendAudio: (base64pcm: string) => void;
+  retrigger: () => void;
   close: () => void;
 }
 
@@ -142,6 +144,14 @@ export async function createGeminiSession(
       ],
     },
     callbacks: {
+      onerror: (e: any) => {
+        callbacks.onDisconnected?.(`Ошибка соединения: ${e?.message ?? e}`);
+      },
+      onclose: (e: any) => {
+        if (e?.code !== 1000) {
+          callbacks.onDisconnected?.(`Соединение закрыто: ${e?.reason || e?.code || "неизвестно"}`);
+        }
+      },
       onmessage: (message: any) => {
         try {
           if (message.toolCall?.functionCalls) {
@@ -186,15 +196,21 @@ export async function createGeminiSession(
     },
   });
 
-  session.sendClientContent({
+  const trigger = () => session.sendClientContent({
     turns: [{ role: "user", parts: [{ text: "." }] }],
     turnComplete: true,
   });
+
+  trigger();
 
   return {
     sendAudio: (base64pcm: string) => {
       if (!micEnabled) return;
       session.sendRealtimeInput({ audio: { data: base64pcm, mimeType: "audio/pcm;rate=16000" } });
+    },
+    retrigger: () => {
+      micEnabled = true;
+      trigger();
     },
     close: () => {
       try { session.close(); } catch {}

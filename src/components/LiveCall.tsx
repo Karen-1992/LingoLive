@@ -174,6 +174,12 @@ export default function LiveCall({
           },
           onEndCall: () => setTimeout(() => handleManualHangup(), 3500),
           onMicReady: () => startMicrophoneNode(stream),
+          onDisconnected: (reason) => {
+            console.warn("Gemini session disconnected:", reason);
+            setErrorMessage(`Соединение прервано: ${reason}. Нажмите «Попробовать снова».`);
+            setSessionStatus("error");
+            cleanupSession();
+          },
         }
       );
 
@@ -304,6 +310,9 @@ export default function LiveCall({
       if (!processorNodeRef.current && micStreamRef.current) {
         startMicrophoneNode(micStreamRef.current);
       }
+      // Re-trigger agent greeting — the first one may have played while output was suspended
+      nextStartTimeRef.current = 0;
+      geminiSessionRef.current?.retrigger();
       setAudioUnlocked(true);
     } catch (err) {
       console.error("Audio unlock failed:", err);
