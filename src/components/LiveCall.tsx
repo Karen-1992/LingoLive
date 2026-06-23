@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Language, Teacher, LiveTranscriptMessage, VocabularyCard } from "../types";
-import { floatTo16BitPCM, arrayBufferToBase64, base64ToFloat32Array } from "../utils/audio";
+import { floatTo16BitPCM, arrayBufferToBase64, base64ToFloat32Array, downsampleBuffer } from "../utils/audio";
 import { createGeminiSession, GeminiLiveSession } from "../utils/geminiLive";
 import { PhoneOff, Mic, RefreshCw, Volume2, Plus, Check, MessagesSquare, Clock } from "lucide-react";
 import { motion } from "motion/react";
@@ -128,8 +128,10 @@ export default function LiveCall({
       });
       micStreamRef.current = stream;
 
-      inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      // Don't force sample rate — iOS Safari throws NotSupportedError with custom rates.
+      // Downsampling to 16kHz happens in startMicrophoneNode; output buffers specify their own rate.
+      inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       nextStartTimeRef.current = 0;
 
       const session = await createGeminiSession(
@@ -227,7 +229,8 @@ export default function LiveCall({
         return;
       }
 
-      const pcmBuffer = floatTo16BitPCM(floatSamples);
+      const resampled = downsampleBuffer(floatSamples, ctx.sampleRate, 16000);
+      const pcmBuffer = floatTo16BitPCM(resampled);
       const base64Audio = arrayBufferToBase64(pcmBuffer);
       geminiSessionRef.current?.sendAudio(base64Audio);
     };
@@ -332,7 +335,7 @@ export default function LiveCall({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="live-call-container">
       {/* Левая интерактивная колонка: Кабина Аудио звонка */}
       <div className="lg:col-span-2 space-y-6 flex flex-col justify-between">
-        <div className={`border rounded-[32px] p-6 shadow-sm flex-1 flex flex-col justify-between space-y-6 min-h-[480px] transition-all relative overflow-hidden ${
+        <div className={`border rounded-[32px] p-4 sm:p-6 shadow-sm flex-1 flex flex-col justify-between space-y-4 sm:space-y-6 min-h-85 sm:min-h-120 transition-all relative overflow-hidden ${
           sessionStatus === "active"
             ? "bg-brand-olive text-brand-cream border-brand-olive/80"
             : "bg-white text-brand-dark border-brand-warm-gray"
@@ -500,7 +503,7 @@ export default function LiveCall({
           <div className="flex justify-center pt-2 relative z-10">
             <button
               onClick={handleManualHangup}
-              className="py-4 px-10 bg-brand-red hover:bg-[#D43D3D] text-white rounded-2xl font-bold shadow-md shadow-brand-red/10 flex items-center gap-3 transition-colors text-sm cursor-pointer"
+              className="py-3 sm:py-4 px-6 sm:px-10 bg-brand-red hover:bg-[#D43D3D] text-white rounded-2xl font-bold shadow-md shadow-brand-red/10 flex items-center gap-3 transition-colors text-sm cursor-pointer"
               id="live-call-hang-up-btn"
             >
               <PhoneOff className="w-5 h-5 fill-current" />
@@ -515,7 +518,7 @@ export default function LiveCall({
       <div className="space-y-6">
         
         {/* Живые титры / транскрипция */}
-        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm h-[300px] flex flex-col justify-between">
+        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm h-56 sm:h-75 flex flex-col justify-between">
           <div className="flex items-center gap-2 border-b border-brand-sand/50 pb-3">
             <MessagesSquare className="w-4 h-4 text-brand-terracotta" />
             <h4 className="text-xs font-bold text-brand-olive uppercase tracking-wider">Субтитры занятия (Live)</h4>
@@ -561,7 +564,7 @@ export default function LiveCall({
         </div>
 
         {/* Блокнот и Память ИИ */}
-        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm h-[320px] flex flex-col justify-between">
+        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm h-64 sm:h-80 flex flex-col justify-between">
           <div className="flex border-b border-brand-sand/50 pb-2 gap-2">
             <button
               onClick={() => setSidebarTab("memory")}

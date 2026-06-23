@@ -4,6 +4,25 @@
  */
 
 /**
+ * Downsamples a Float32Array from one sample rate to another using averaging.
+ * Required because iOS Safari doesn't support custom AudioContext sample rates.
+ */
+export function downsampleBuffer(input: Float32Array, fromRate: number, toRate: number): Float32Array {
+  if (fromRate === toRate) return input;
+  const ratio = fromRate / toRate;
+  const outputLength = Math.floor(input.length / ratio);
+  const output = new Float32Array(outputLength);
+  for (let i = 0; i < outputLength; i++) {
+    const start = Math.floor(i * ratio);
+    const end = Math.floor((i + 1) * ratio);
+    let sum = 0;
+    for (let j = start; j < end && j < input.length; j++) sum += input[j];
+    output[i] = sum / (end - start);
+  }
+  return output;
+}
+
+/**
  * Converts Float32Array audio samples into 16-bit Signed Integer PCM (little-endian) ArrayBuffer.
  */
 export function floatTo16BitPCM(floatSamples: Float32Array): ArrayBuffer {
