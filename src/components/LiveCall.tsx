@@ -43,6 +43,7 @@ export default function LiveCall({
   const [transcripts, setTranscripts] = useState<LiveTranscriptMessage[]>([]);
   const [studentVolume, setStudentVolume] = useState(0);
   const [teacherVolume, setTeacherVolume] = useState(0);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   
   // Custom manual vocabulary jotter
   const [newWord, setNewWord] = useState("");
@@ -295,6 +296,20 @@ export default function LiveCall({
     setTeacherVolume(0);
   };
 
+  const handleUnlockAudio = async () => {
+    try {
+      if (inputAudioCtxRef.current?.state === "suspended") await inputAudioCtxRef.current.resume();
+      if (outputAudioCtxRef.current?.state === "suspended") await outputAudioCtxRef.current.resume();
+      // Restart mic node if it never started
+      if (!processorNodeRef.current && micStreamRef.current) {
+        startMicrophoneNode(micStreamRef.current);
+      }
+      setAudioUnlocked(true);
+    } catch (err) {
+      console.error("Audio unlock failed:", err);
+    }
+  };
+
   const cleanupSession = () => {
     if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; }
     if (micSourceNodeRef.current) { try { micSourceNodeRef.current.disconnect(); } catch {} micSourceNodeRef.current = null; }
@@ -503,8 +518,17 @@ export default function LiveCall({
 
           </div>
 
-          {/* Кнопка "Повесить Трубку" */}
-          <div className="flex justify-center pt-2 relative z-10">
+          {/* Кнопка "Повесить Трубку" + разблокировка аудио */}
+          <div className="flex flex-col items-center gap-3 pt-2 relative z-10">
+            {sessionStatus === "active" && !audioUnlocked && (
+              <button
+                onClick={handleUnlockAudio}
+                className="py-2 px-6 bg-white/15 hover:bg-white/25 border border-white/30 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Volume2 className="w-4 h-4" />
+                Нет звука? Нажмите здесь
+              </button>
+            )}
             <button
               onClick={handleManualHangup}
               className="py-3 sm:py-4 px-6 sm:px-10 bg-brand-red hover:bg-[#D43D3D] text-white rounded-2xl font-bold shadow-md shadow-brand-red/10 flex items-center gap-3 transition-colors text-sm cursor-pointer"
