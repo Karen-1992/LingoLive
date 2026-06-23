@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Teacher } from "../types";
 import { TEACHERS } from "../data/languages";
-import { Volume2, Trash2, Check, Plus, Sparkles, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { Volume2, Trash2, Check, Plus, Sparkles, Play } from "lucide-react";
 import { motion } from "motion/react";
 
 const LEVELS = [
@@ -30,7 +29,6 @@ const ACCENT_MAP: Record<string, string> = {
   en_marcus: "Британский акцент",
 };
 
-const PAGE_SIZE = 4;
 
 export default function LessonSetup({
   selectedLevel,
@@ -42,9 +40,6 @@ export default function LessonSetup({
   onAddManualFact,
   onStartCall,
 }: Props) {
-  const [teacherPage, setTeacherPage] = useState(0);
-  const totalPages = Math.ceil(TEACHERS.length / PAGE_SIZE);
-  const visibleTeachers = TEACHERS.slice(teacherPage * PAGE_SIZE, (teacherPage + 1) * PAGE_SIZE);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -94,33 +89,12 @@ export default function LessonSetup({
 
           {/* Teacher / Voice selector */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 block">
-                2. Выберите голос собеседника
-              </label>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setTeacherPage((p) => Math.max(0, p - 1))}
-                    disabled={teacherPage === 0}
-                    className="p-1 rounded-lg border border-brand-sand/60 hover:bg-brand-cream disabled:opacity-30 transition-all cursor-pointer"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5 text-brand-olive" />
-                  </button>
-                  <span className="text-[10px] text-brand-dark/40 px-1">{teacherPage + 1}/{totalPages}</span>
-                  <button
-                    onClick={() => setTeacherPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={teacherPage === totalPages - 1}
-                    className="p-1 rounded-lg border border-brand-sand/60 hover:bg-brand-cream disabled:opacity-30 transition-all cursor-pointer"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5 text-brand-olive" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 block">
+              2. Выберите голос собеседника
+            </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {visibleTeachers.map((teacher) => {
+              {TEACHERS.map((teacher) => {
                 const isSelected = selectedTeacher.id === teacher.id;
                 const accent = ACCENT_MAP[teacher.id] ?? "Английский акцент";
                 return (
