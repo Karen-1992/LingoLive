@@ -14,12 +14,9 @@ interface LiveCallProps {
   language: Language;
   teacher: Teacher;
   level: string;
-  topic: string;
   onHangUp: (durationSeconds: number, transcripts: LiveTranscriptMessage[]) => void;
-  userFacts?: string[];
-  conversationNotes?: string[];
-  onSaveFact?: (fact: string) => void;
-  onSaveNote?: (note: string) => void;
+  memories?: string[];
+  onSaveMemory?: (memory: string) => void;
   practiceGrammar?: string[];
   vocabWords?: VocabWord[];
 }
@@ -28,12 +25,9 @@ export default function LiveCall({
   language,
   teacher,
   level,
-  topic,
   onHangUp,
-  userFacts = [],
-  conversationNotes = [],
-  onSaveFact,
-  onSaveNote,
+  memories = [],
+  onSaveMemory,
   practiceGrammar = [],
   vocabWords = [],
 }: LiveCallProps) {
@@ -142,10 +136,8 @@ export default function LiveCall({
           studentLevel: level,
           teacherName: teacher.name,
           voiceName: teacher.voiceName,
-          currentTopic: topic,
           baseSystemPrompt: teacher.systemInstruction,
-          userFacts,
-          conversationNotes,
+          memories,
           practiceGrammar,
           practiceWords: vocabWords.map((w) => ({ text: w.text, translation: w.translation })),
         },
@@ -154,19 +146,11 @@ export default function LiveCall({
           onTeacherTranscription: (text) => appendTranscript("teacher", text),
           onStudentTranscription: (text) => appendTranscript("student", text),
           onInterrupted: () => handleVoiceInterruption(),
-          onSaveFact: (fact) => {
-            onSaveFact?.(fact);
+          onSaveMemory: (memory) => {
+            onSaveMemory?.(memory);
             setTranscripts((prev) => [...prev, {
-              id: "fact_" + Date.now(), speaker: "system",
-              text: `💡 Факт сохранён: "${fact}"`,
-              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            }]);
-          },
-          onSaveNote: (note) => {
-            onSaveNote?.(note);
-            setTranscripts((prev) => [...prev, {
-              id: "note_" + Date.now(), speaker: "system",
-              text: `📝 Заметка сохранена: "${note}"`,
+              id: "mem_" + Date.now(), speaker: "system",
+              text: `🧠 Сохранено в память: "${memory}"`,
               timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             }]);
           },
@@ -587,13 +571,13 @@ export default function LiveCall({
             🧠 Память ИИ
           </p>
           <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
-            {userFacts.length === 0 ? (
+            {memories.length === 0 ? (
               <div className="text-center py-6 text-brand-dark/35 italic text-[11px] space-y-1">
-                <p>💡 Копим факты...</p>
-                <p className="text-[10px] max-w-[200px] mx-auto leading-normal">Представьтесь преподавателю, расскажите о вашей работе, хобби или целях обучения.</p>
+                <p>💡 Память пока чиста</p>
+                <p className="text-[10px] max-w-[200px] mx-auto leading-normal">Расскажите о себе — преподаватель сохранит важное для следующих занятий.</p>
               </div>
             ) : (
-              userFacts.map((fact, index) => (
+              memories.map((mem, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, x: 20 }}
@@ -601,7 +585,7 @@ export default function LiveCall({
                   className="p-2 border border-brand-sand/40 bg-brand-light-gray/40 rounded-xl text-[11px] text-brand-dark flex items-start gap-1.5"
                 >
                   <span className="text-brand-terracotta shrink-0 mt-0.5">✨</span>
-                  <span className="leading-tight flex-1">{fact}</span>
+                  <span className="leading-tight flex-1">{mem}</span>
                 </motion.div>
               ))
             )}

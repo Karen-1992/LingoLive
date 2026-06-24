@@ -14,6 +14,7 @@ interface UserStatsProps {
   onRemoveFact?: (index: number) => void;
   onAddManualFact?: (fact: string) => void;
   onRemoveWord?: (id: string) => void;
+  onClearMemory?: () => void;
 }
 
 export default function UserStats({
@@ -22,6 +23,7 @@ export default function UserStats({
   onRemoveFact,
   onAddManualFact,
   onRemoveWord,
+  onClearMemory,
 }: UserStatsProps) {
   const [activeTranscriptItem, setActiveTranscriptItem] = useState<any | null>(null);
 
@@ -87,7 +89,7 @@ export default function UserStats({
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Слов в словаре</span>
+            <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Слов в учебнике</span>
             <p className="text-lg font-serif font-bold italic text-brand-olive">{(stats.vocabWords || []).length} слов</p>
           </div>
         </div>
@@ -96,23 +98,23 @@ export default function UserStats({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Словарь */}
+        {/* Мой словарь */}
         <div className="lg:col-span-2 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-brand-sand/40 pb-3">
             <BookOpen className="w-5 h-5 text-brand-terracotta" />
-            <h3 className="font-serif font-bold italic text-brand-olive text-base">Словарь урока</h3>
+            <h3 className="font-serif font-bold italic text-brand-olive text-base">Мой словарь</h3>
           </div>
 
           {(!stats.vocabWords || stats.vocabWords.length === 0) ? (
             <div className="text-center py-8 text-[11px] text-brand-dark/40 italic">
-              Словарь пуст. Добавьте слова перед следующим уроком — ИИ будет отрабатывать их в разговоре.
+              Словарь пуст. Добавьте слова перед уроком — ИИ будет отрабатывать их в разговоре.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {stats.vocabWords.map((w) => (
                 <div
                   key={w.id}
-                  className="flex items-start justify-between gap-2 p-3 bg-brand-light-gray/30 border border-brand-sand/40 rounded-2xl group"
+                  className="p-3 bg-brand-light-gray/30 border border-brand-sand/40 rounded-2xl"
                 >
                   <div className="space-y-0.5 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
@@ -125,14 +127,6 @@ export default function UserStats({
                       <p className="text-[10.5px] text-brand-dark/55">{w.translation}</p>
                     )}
                   </div>
-                  {onRemoveWord && (
-                    <button
-                      onClick={() => onRemoveWord(w.id)}
-                      className="text-brand-dark/25 hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0 mt-0.5"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
@@ -141,9 +135,19 @@ export default function UserStats({
 
         {/* Память обучения (Что помнит преподаватель) */}
         <div className="lg:col-span-1 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 border-b border-brand-sand/40 pb-3">
-            <Lightbulb className="w-5 h-5 text-brand-terracotta" />
-            <h3 className="font-serif font-bold italic text-brand-olive text-base">Что помнит преподаватель</h3>
+          <div className="flex items-center justify-between border-b border-brand-sand/40 pb-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-brand-terracotta" />
+              <h3 className="font-serif font-bold italic text-brand-olive text-base">Что помнит преподаватель</h3>
+            </div>
+            {[...(stats.userFacts || []), ...(stats.conversationNotes || [])].length > 0 && (
+              <button
+                onClick={onClearMemory}
+                className="text-[10.5px] text-brand-dark/50 hover:text-brand-red underline font-medium cursor-pointer"
+              >
+                Очистить память
+              </button>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -174,13 +178,16 @@ export default function UserStats({
               </button>
             </form>
 
+            {(() => {
+              const allMemories = [...(stats.userFacts || []), ...(stats.conversationNotes || [])];
+              return (
             <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {(!stats.userFacts || stats.userFacts.length === 0) ? (
+              {allMemories.length === 0 ? (
                 <div className="p-3.5 rounded-2xl bg-brand-light-gray/20 border border-brand-sand/30 text-center py-6 text-[11px] text-brand-dark/50 italic leading-normal">
-                  База знаний пуста. Преподаватель автоматически запишет важные факты о вас во время практикума!
+                  Память пуста. Преподаватель автоматически сохранит важное во время занятия!
                 </div>
               ) : (
-                stats.userFacts.map((fact, index) => (
+                allMemories.map((fact, index) => (
                   <div
                     key={index}
                     className="p-2.5 bg-brand-light-gray/20 border border-brand-olive/10 rounded-xl flex justify-between items-center gap-2 text-xs"
@@ -197,6 +204,8 @@ export default function UserStats({
                 ))
               )}
             </div>
+            );
+            })()}
           </div>
         </div>
 
@@ -261,7 +270,6 @@ export default function UserStats({
                 <tr className="border-b border-brand-sand/30 text-brand-dark/50">
                   <th className="py-2 font-serif font-bold italic text-brand-olive text-sm">Преподаватель</th>
                   <th className="py-2 font-bold uppercase tracking-wider text-[10px]">Язык</th>
-                  <th className="py-2 font-bold uppercase tracking-wider text-[10px]">Тематика</th>
                   <th className="py-2 font-bold uppercase tracking-wider text-[10px]">Время и Уровень</th>
                   <th className="py-2 font-bold uppercase tracking-wider text-[10px]">Длительность</th>
                   <th className="py-2 font-bold uppercase tracking-wider text-[10px]">Транскрипт</th>
@@ -282,7 +290,6 @@ export default function UserStats({
                       {item.teacherName}
                     </td>
                     <td className="py-3 font-medium">{item.languageName}</td>
-                    <td className="py-3 shrink-0 max-w-[150px] truncate">{item.topic}</td>
                     <td className="py-3">
                       <div className="space-y-0.5">
                         <span className="text-[10px] text-brand-dark/50 block font-normal">{item.date}</span>
@@ -323,9 +330,6 @@ export default function UserStats({
                 </h3>
                 <p className="text-[11px] text-brand-dark/60">
                   Язык: <span className="font-semibold text-brand-olive">{activeTranscriptItem.languageName}</span> | Дата: {activeTranscriptItem.date} | Уровень: {activeTranscriptItem.level}
-                </p>
-                <p className="text-[11px] text-brand-dark/60 italic">
-                  Тема урока: "{activeTranscriptItem.topic}"
                 </p>
               </div>
               <button

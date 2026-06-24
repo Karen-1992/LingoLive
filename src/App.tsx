@@ -20,8 +20,7 @@ export default function App() {
   const [lessonStep, setLessonStep] = useState<"select_lang" | "calling">("select_lang");
 
   const [selectedLevel, setSelectedLevel] = useState("Средний (B1)");
-  const [selectedTopic] = useState("Свободный разговор");
-  const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER);
+const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER);
   const [selectedGrammar, setSelectedGrammar] = useState<string[]>([]);
 
   const [stats, setStats] = useState<UserStatsType>({
@@ -46,29 +45,25 @@ export default function App() {
     saveStats({ ...stats, history: [] });
   };
 
-  const handleSaveFact = (fact: string) => {
+  const handleSaveMemory = (memory: string) => {
     setStats((prev) => {
-      const currentFacts = prev.userFacts || [];
-      if (currentFacts.includes(fact.trim())) return prev;
-      const updated = { ...prev, userFacts: [...currentFacts, fact.trim()] };
-      localStorage.setItem("lingo_live_stats", JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const handleSaveNote = (note: string) => {
-    setStats((prev) => {
-      const currentNotes = prev.conversationNotes || [];
-      if (currentNotes.includes(note.trim())) return prev;
-      const updated = { ...prev, conversationNotes: [...currentNotes, note.trim()] };
+      const current = prev.userFacts || [];
+      if (current.includes(memory.trim())) return prev;
+      const updated = { ...prev, userFacts: [...current, memory.trim()] };
       localStorage.setItem("lingo_live_stats", JSON.stringify(updated));
       return updated;
     });
   };
 
   const handleRemoveFact = (indexToRemove: number) => {
-    const updatedFacts = (stats.userFacts || []).filter((_, idx) => idx !== indexToRemove);
-    saveStats({ ...stats, userFacts: updatedFacts });
+    const userFacts = stats.userFacts || [];
+    const conversationNotes = stats.conversationNotes || [];
+    if (indexToRemove < userFacts.length) {
+      saveStats({ ...stats, userFacts: userFacts.filter((_, i) => i !== indexToRemove) });
+    } else {
+      const noteIdx = indexToRemove - userFacts.length;
+      saveStats({ ...stats, conversationNotes: conversationNotes.filter((_, i) => i !== noteIdx) });
+    }
   };
 
   const handleAddManualFact = (factText: string) => {
@@ -76,6 +71,14 @@ export default function App() {
     const currentFacts = stats.userFacts || [];
     if (currentFacts.includes(factText.trim())) return;
     saveStats({ ...stats, userFacts: [...currentFacts, factText.trim()] });
+  };
+
+  const handleClearMemory = () => {
+    saveStats({ ...stats, userFacts: [], conversationNotes: [] });
+  };
+
+  const handleClearWords = () => {
+    saveStats({ ...stats, vocabWords: [] });
   };
 
   const handleAddWord = (word: VocabWord) => {
@@ -105,8 +108,7 @@ export default function App() {
       }),
       durationSeconds,
       level: selectedLevel,
-      topic: selectedTopic,
-      transcriptsCount: filteredCount,
+transcriptsCount: filteredCount,
       transcripts,
     };
 
@@ -194,14 +196,12 @@ export default function App() {
                   setSelectedLevel={setSelectedLevel}
                   selectedTeacher={selectedTeacher}
                   setSelectedTeacher={setSelectedTeacher}
-                  userFacts={stats.userFacts || []}
-                  onRemoveFact={handleRemoveFact}
-                  onAddManualFact={handleAddManualFact}
                   selectedGrammar={selectedGrammar}
                   setSelectedGrammar={setSelectedGrammar}
                   vocabWords={stats.vocabWords || []}
                   onAddWord={handleAddWord}
                   onRemoveWord={handleRemoveWord}
+                  onClearWords={handleClearWords}
                   onStartCall={() => setLessonStep("calling")}
                 />
               )}
@@ -211,12 +211,9 @@ export default function App() {
                   language={DEFAULT_LANGUAGE}
                   teacher={selectedTeacher}
                   level={selectedLevel}
-                  topic={selectedTopic}
                   onHangUp={handleHangUp}
-                  userFacts={stats.userFacts || []}
-                  conversationNotes={stats.conversationNotes || []}
-                  onSaveFact={handleSaveFact}
-                  onSaveNote={handleSaveNote}
+                  memories={[...(stats.userFacts || []), ...(stats.conversationNotes || [])]}
+                  onSaveMemory={handleSaveMemory}
                   practiceGrammar={selectedGrammar}
                   vocabWords={stats.vocabWords || []}
                 />
@@ -238,6 +235,7 @@ export default function App() {
                 onRemoveFact={handleRemoveFact}
                 onAddManualFact={handleAddManualFact}
                 onRemoveWord={handleRemoveWord}
+                onClearMemory={handleClearMemory}
               />
             </motion.div>
           )}

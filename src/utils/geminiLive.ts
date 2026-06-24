@@ -5,10 +5,8 @@ export interface GeminiSessionConfig {
   studentLevel: string;
   teacherName: string;
   voiceName: string;
-  currentTopic: string;
   baseSystemPrompt: string;
-  userFacts: string[];
-  conversationNotes: string[];
+  memories: string[];
   practiceGrammar: string[];
   practiceWords: { text: string; translation?: string }[];
 }
@@ -18,8 +16,7 @@ export interface GeminiSessionCallbacks {
   onTeacherTranscription: (text: string) => void;
   onStudentTranscription: (text: string) => void;
   onInterrupted: () => void;
-  onSaveFact: (fact: string) => void;
-  onSaveNote: (note: string) => void;
+  onSaveMemory: (memory: string) => void;
   onEndCall: () => void;
   onMicReady: () => void;
   onDisconnected?: (reason: string) => void;
@@ -55,19 +52,14 @@ Guidelines for student level "Intermediate" (B1-B2):
 }
 
 function buildSystemInstruction(config: GeminiSessionConfig): string {
-  const { languageName, studentLevel, teacherName, baseSystemPrompt, userFacts, conversationNotes, practiceGrammar, practiceWords } = config;
+  const { languageName, studentLevel, teacherName, baseSystemPrompt, memories, practiceGrammar, practiceWords } = config;
+
+  const isFirstSession = memories.length === 0;
 
   let contextPrompt = "";
-  if (userFacts.length > 0 || conversationNotes.length > 0) {
-    contextPrompt = "\n\n";
-    if (userFacts.length > 0) {
-      contextPrompt += "STUDENT PROFILE (personal facts — use naturally, don't ask again):\n" +
-        userFacts.map(f => `- ${f}`).join("\n") + "\n";
-    }
-    if (conversationNotes.length > 0) {
-      contextPrompt += "\nPREVIOUS SESSION NOTES (context from past lessons — reference naturally when relevant):\n" +
-        conversationNotes.map(n => `- ${n}`).join("\n") + "\n";
-    }
+  if (memories.length > 0) {
+    contextPrompt = "\n\nMEMORY FROM PREVIOUS SESSIONS (use naturally as context — don't ask again about things you already know):\n" +
+      memories.map(m => `- ${m}`).join("\n") + "\n";
   }
 
   const levelInstructions = buildLevelInstructions(studentLevel, languageName);
@@ -82,14 +74,16 @@ function buildSystemInstruction(config: GeminiSessionConfig): string {
       `If 2+ minutes pass without the student attempting the target grammar, find a natural way to prompt them.`;
   }
   if (practiceWords.length > 0) {
-    practicePrompt += `\n\nVOCABULARY TO REINFORCE THIS SESSION:\n` +
+    practicePrompt += `\n\nVOCABULARY FOR THIS SESSION:\n` +
       practiceWords.map(w => `- ${w.text}${w.translation ? ` (${w.translation})` : ""}`).join("\n") + `\n` +
-      `→ If the student directly asks what words or vocabulary you'll be practising today, tell them the list clearly. ` +
-      `Otherwise, weave these words into the conversation naturally — ask questions that give the student ` +
-      `opportunities to use them themselves. Don't announce them unprompted at the start. ` +
-      `When the student uses one correctly, praise briefly ("Nice, exactly right!"). ` +
-      `If a word hasn't come up after ~5 minutes, create a natural opening: ask a question or share something that leads there.`;
+      `→ If the student asks what vocabulary you have for today, tell them the list. ` +
+      `Otherwise let these words appear naturally in conversation — only use them when they genuinely fit. ` +
+      `Don't steer the whole conversation around them. When the student uses one correctly, praise briefly.`;
   }
+
+  const greetingInstruction = isFirstSession
+    ? `9. This is the first session — you have no memory of this student yet. After your warm greeting, ask their name and one or two natural questions to get to know them (what they do, why they're learning ${languageName}, what they find hardest). Save what you learn with "save_memory". Only then ease into the lesson.`
+    : `9. When you receive input, greet the student warmly, introduce yourself as ${teacherName}, and ask one engaging open-ended question to kick off the dialogue.`;
 
   return `${baseSystemPrompt}${contextPrompt}${practicePrompt}
 
@@ -100,11 +94,10 @@ Strict Constraints:
 4. TOPIC FOCUS — your primary goal is English language practice. If the student tries to drift into casual off-topic chat unrelated to the lesson (e.g. asking personal questions about you, discussing random news, or just chatting in Russian), acknowledge briefly and steer back: "That's interesting! Let's keep practising — how would you say that in English?" or similar. Occasional light small talk is fine as a warm-up, but always bring it back to English practice within 1-2 exchanges.
 5. STUDENT MUST SPEAK ENGLISH — if the student responds in Russian (other than asking for a translation), do NOT answer in Russian. Instead, gently but firmly prompt them to try in English: say something like "Try to say that in English! Even a few words is great." or "Can you give it a go in English first?". Repeat the question in simpler form if needed. Only translate as a last resort after two failed attempts.
 6. Keep answers under 3 sentences so the student has frequent turns to speak. Always end your turn with a question or prompt that invites them to respond in English.
-7. Use the "save_user_fact" tool whenever the student shares personal details (name, job, hobbies, goals). Don't ask again about things you already know.
-7b. Use the "save_conversation_note" tool to record notable moments: grammar topics covered, mistakes corrected, vocabulary practiced, student strengths or struggles. Write notes in Russian.
-7c. Use the "end_call" tool when the student clearly wants to finish (says goodbye, needs to go, asks to stop). Say a warm farewell in ${languageName} first, then call the tool.
+7. MEMORY — use the "save_memory" tool aggressively. Save immediately when you learn: name, age, job, city, hobbies, travel plans, family, learning goals, what they find hard, topics covered this session, grammar mistakes you corrected, vocabulary they struggled with. Don't wait until the end — save each piece as soon as you hear it. Write a concise note in Russian.
+7b. Use the "end_call" tool when the student clearly wants to finish (says goodbye, needs to go, asks to stop). Say a warm farewell in ${languageName} first, then call the tool.
 8. Be warm, encouraging, and patient — like a great coach, not a strict examiner. Celebrate effort. Keep it fun.
-9. When you receive input, greet the student warmly, introduce yourself as ${teacherName}, and ask one engaging open-ended question to kick off the dialogue.`;
+${greetingInstruction}`;
 }
 
 export async function createGeminiSession(
@@ -134,25 +127,14 @@ export async function createGeminiSession(
         {
           functionDeclarations: [
             {
-              name: "save_user_fact",
-              description: "Saves a personal fact about the student (name, job, hobbies, goals). Use when the student shares something personal.",
+              name: "save_memory",
+              description: "Save anything worth remembering for future sessions: personal details, learning goals, grammar struggles, vocabulary gaps, topics covered, or notable moments. Use proactively — if in doubt, save it.",
               parameters: {
                 type: "OBJECT" as any,
                 properties: {
-                  fact: { type: "STRING" as any, description: "Short fact in Russian, e.g. 'Студента зовут Анна'" },
+                  memory: { type: "STRING" as any, description: "Short self-contained note in Russian, e.g. 'Студентку зовут Анна, работает дизайнером'" },
                 },
-                required: ["fact"],
-              },
-            },
-            {
-              name: "save_conversation_note",
-              description: "Saves a notable moment from this conversation: vocabulary covered, grammar corrected, topics discussed, student struggles or strengths.",
-              parameters: {
-                type: "OBJECT" as any,
-                properties: {
-                  note: { type: "STRING" as any, description: "Short self-contained note in Russian" },
-                },
-                required: ["note"],
+                required: ["memory"],
               },
             },
             {
@@ -177,10 +159,8 @@ export async function createGeminiSession(
         try {
           if (message.toolCall?.functionCalls) {
             for (const call of message.toolCall.functionCalls) {
-              if (call.name === "save_user_fact" && call.args?.fact) {
-                callbacks.onSaveFact(call.args.fact);
-              } else if (call.name === "save_conversation_note" && call.args?.note) {
-                callbacks.onSaveNote(call.args.note);
+              if (call.name === "save_memory" && call.args?.memory) {
+                callbacks.onSaveMemory(call.args.memory);
               } else if (call.name === "end_call") {
                 callbacks.onEndCall();
               }

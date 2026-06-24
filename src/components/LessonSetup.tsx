@@ -17,14 +17,12 @@ interface Props {
   setSelectedLevel: (v: string) => void;
   selectedTeacher: Teacher;
   setSelectedTeacher: (t: Teacher) => void;
-  userFacts: string[];
-  onRemoveFact: (idx: number) => void;
-  onAddManualFact: (text: string) => void;
   selectedGrammar: string[];
   setSelectedGrammar: (v: string[]) => void;
   vocabWords: VocabWord[];
   onAddWord: (word: VocabWord) => void;
   onRemoveWord: (id: string) => void;
+  onClearWords: () => void;
   onStartCall: () => void;
 }
 
@@ -43,14 +41,12 @@ export default function LessonSetup({
   setSelectedLevel,
   selectedTeacher,
   setSelectedTeacher,
-  userFacts,
-  onRemoveFact,
-  onAddManualFact,
   selectedGrammar,
   setSelectedGrammar,
   vocabWords,
   onAddWord,
   onRemoveWord,
+  onClearWords,
   onStartCall,
 }: Props) {
   const [wordInput, setWordInput] = useState("");
@@ -89,10 +85,8 @@ export default function LessonSetup({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Left + Center: Configuration */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-brand-warm-gray shadow-sm space-y-8">
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-brand-warm-gray shadow-sm space-y-8">
           {/* Header */}
           <div className="space-y-4">
             <div className="inline-flex items-center gap-1.5 bg-brand-light-gray text-brand-olive py-1.5 px-4 rounded-full text-[11px] font-bold border border-brand-sand/30">
@@ -220,11 +214,18 @@ export default function LessonSetup({
 
           {/* Vocabulary */}
           <div className="space-y-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 flex items-center gap-1.5">
-              <Languages className="w-3.5 h-3.5 text-brand-terracotta" />
-              4. Словарь урока
-              <span className="text-brand-dark/40 normal-case font-normal tracking-normal ml-1">(необязательно)</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 flex items-center gap-1.5">
+                <Languages className="w-3.5 h-3.5 text-brand-terracotta" />
+                4. Словарь урока
+                <span className="text-brand-dark/40 normal-case font-normal tracking-normal ml-1">(необязательно)</span>
+              </label>
+              {vocabWords.length > 0 && (
+                <button onClick={onClearWords} className="text-[10px] text-brand-dark/40 hover:text-brand-red transition-colors cursor-pointer shrink-0">
+                  Очистить
+                </button>
+              )}
+            </div>
             <p className="text-[10.5px] text-brand-dark/55 leading-relaxed">
               Добавьте слова или фразы — ИИ будет вплетать их в разговор и следить за тем, чтобы вы их использовали.
             </p>
@@ -294,78 +295,6 @@ export default function LessonSetup({
             </motion.button>
           </div>
         </div>
-      </div>
-
-      {/* Right column: Memory Panel */}
-      <div className="space-y-6">
-        <div className="bg-white rounded-[32px] p-6 border border-brand-warm-gray shadow-sm flex flex-col space-y-4">
-          <div className="space-y-2 border-b border-brand-sand/50 pb-3">
-            <h4 className="text-xs font-bold text-brand-olive uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-terracotta shrink-0 animate-pulse" />
-              Память ИИ-репетитора
-            </h4>
-            <p className="text-[10.5px] text-brand-dark/50 leading-relaxed">
-              Во время разговора репетитор автоматически сохранит факты о вас, чтобы использовать в будущих диалогах.
-            </p>
-          </div>
-
-          <div className="flex-1 overflow-y-auto max-h-[280px] space-y-2.5 pr-1 scrollbar-thin">
-            {userFacts.length === 0 ? (
-              <div className="text-center py-12 text-brand-dark/40 italic space-y-2 text-xs">
-                <span className="text-xl">🧠</span>
-                <p>Память пока чиста. Расскажите репетитору о себе во время звонка — он запомнит это!</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {userFacts.map((fact, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 bg-brand-light-gray/40 border border-brand-sand/40 rounded-xl flex justify-between items-start gap-2 text-xs text-brand-dark group hover:bg-brand-light-gray transition-colors"
-                  >
-                    <span className="leading-relaxed flex-1">💡 {fact}</span>
-                    <button
-                      onClick={() => onRemoveFact(idx)}
-                      className="text-brand-dark/30 hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
-                      title="Забыть факт"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="pt-3 border-t border-brand-sand/50 space-y-2">
-            <p className="text-[10px] font-bold text-brand-dark/50 uppercase">Добавить факт вручную:</p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const input = (e.currentTarget.elements.namedItem("factInput") as HTMLInputElement);
-                if (input.value.trim()) {
-                  onAddManualFact(input.value);
-                  input.value = "";
-                }
-              }}
-              className="flex gap-2"
-            >
-              <input
-                name="factInput"
-                type="text"
-                placeholder="Напр., Меня зовут Анна, я дизайнер"
-                className="flex-1 p-2 border border-brand-sand/70 rounded-xl text-[11px] bg-brand-light-gray/30 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-terracotta"
-              />
-              <button
-                type="submit"
-                className="py-2 px-3 bg-brand-olive hover:bg-brand-olive/90 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </form>
-          </div>
-        </div>
-
-      </div>
     </div>
   );
 }

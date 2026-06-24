@@ -32,7 +32,6 @@ export interface CallHistoryEntry {
   date: string;
   durationSeconds: number;
   level: string;
-  topic: string;
   transcriptsCount: number;
   transcripts?: LiveTranscriptMessage[];
 }
