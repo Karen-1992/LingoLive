@@ -96,7 +96,7 @@ export async function createGeminiSession(
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  let micEnabled = false;
+  let micEnabled = true;
 
   const session = await ai.live.connect({
     model: "models/gemini-3.1-flash-live-preview",
@@ -185,9 +185,8 @@ export async function createGeminiSession(
             callbacks.onInterrupted();
           }
 
-          if (message.serverContent?.turnComplete && !micEnabled) {
-            micEnabled = true;
-            callbacks.onMicReady();
+          if (message.serverContent?.turnComplete) {
+            // no-op: mic is enabled from the start
           }
         } catch (err) {
           console.error("Error processing Gemini Live message", err);
@@ -197,11 +196,15 @@ export async function createGeminiSession(
   });
 
   const trigger = () => session.sendClientContent({
-    turns: [{ role: "user", parts: [{ text: "." }] }],
+    turns: [{ role: "user", parts: [{ text: "Hello!" }] }],
     turnComplete: true,
   });
 
-  trigger();
+  // Small delay so AudioContext is fully running before mic and trigger start
+  setTimeout(() => {
+    callbacks.onMicReady();
+    trigger();
+  }, 300);
 
   return {
     sendAudio: (base64pcm: string) => {
