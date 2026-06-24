@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Teacher, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage } from "./types";
+import { Teacher, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage, VocabWord } from "./types";
 import { LANGUAGES, TEACHERS } from "./data/languages";
 import LiveCall from "./components/LiveCall";
 import UserStats from "./components/UserStats";
@@ -76,6 +76,16 @@ export default function App() {
     const currentFacts = stats.userFacts || [];
     if (currentFacts.includes(factText.trim())) return;
     saveStats({ ...stats, userFacts: [...currentFacts, factText.trim()] });
+  };
+
+  const handleAddWord = (word: VocabWord) => {
+    const current = stats.vocabWords || [];
+    if (current.some((w) => w.text.trim().toLowerCase() === word.text.trim().toLowerCase())) return;
+    saveStats({ ...stats, vocabWords: [...current, word] });
+  };
+
+  const handleRemoveWord = (id: string) => {
+    saveStats({ ...stats, vocabWords: (stats.vocabWords || []).filter((w) => w.id !== id) });
   };
 
   const handleHangUp = (durationSeconds: number, transcripts: LiveTranscriptMessage[]) => {
@@ -189,6 +199,9 @@ export default function App() {
                   onAddManualFact={handleAddManualFact}
                   selectedGrammar={selectedGrammar}
                   setSelectedGrammar={setSelectedGrammar}
+                  vocabWords={stats.vocabWords || []}
+                  onAddWord={handleAddWord}
+                  onRemoveWord={handleRemoveWord}
                   onStartCall={() => setLessonStep("calling")}
                 />
               )}
@@ -205,6 +218,7 @@ export default function App() {
                   onSaveFact={handleSaveFact}
                   onSaveNote={handleSaveNote}
                   practiceGrammar={selectedGrammar}
+                  vocabWords={stats.vocabWords || []}
                 />
               )}
             </motion.div>
@@ -223,6 +237,7 @@ export default function App() {
                 onClearHistory={handleClearHistory}
                 onRemoveFact={handleRemoveFact}
                 onAddManualFact={handleAddManualFact}
+                onRemoveWord={handleRemoveWord}
               />
             </motion.div>
           )}

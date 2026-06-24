@@ -4,10 +4,10 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Language, Teacher, LiveTranscriptMessage } from "../types";
+import { Language, Teacher, LiveTranscriptMessage, VocabWord } from "../types";
 import { floatTo16BitPCM, arrayBufferToBase64, base64ToFloat32Array, downsampleBuffer } from "../utils/audio";
 import { createGeminiSession, GeminiLiveSession } from "../utils/geminiLive";
-import { PhoneOff, Mic, RefreshCw, Volume2, MessagesSquare, Clock } from "lucide-react";
+import { PhoneOff, Mic, RefreshCw, Volume2, MessagesSquare, Clock, BookOpen } from "lucide-react";
 import { motion } from "motion/react";
 
 interface LiveCallProps {
@@ -21,6 +21,7 @@ interface LiveCallProps {
   onSaveFact?: (fact: string) => void;
   onSaveNote?: (note: string) => void;
   practiceGrammar?: string[];
+  vocabWords?: VocabWord[];
 }
 
 export default function LiveCall({
@@ -34,6 +35,7 @@ export default function LiveCall({
   onSaveFact,
   onSaveNote,
   practiceGrammar = [],
+  vocabWords = [],
 }: LiveCallProps) {
   const [sessionStatus, setSessionStatus] = useState<"idle" | "connecting" | "active" | "error" | "closed">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -145,6 +147,7 @@ export default function LiveCall({
           userFacts,
           conversationNotes,
           practiceGrammar,
+          practiceWords: vocabWords.map((w) => ({ text: w.text, translation: w.translation })),
         },
         {
           onAudio: (base64) => playTeacherAudioChunk(base64),
@@ -579,13 +582,13 @@ export default function LiveCall({
         </div>
 
         {/* Память ИИ */}
-        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm h-64 sm:h-80 flex flex-col gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-dark/50 pb-1 border-b border-brand-sand/50">
+        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm flex flex-col gap-2 max-h-64 sm:max-h-72">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-dark/50 pb-1 border-b border-brand-sand/50 shrink-0">
             🧠 Память ИИ
           </p>
           <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
             {userFacts.length === 0 ? (
-              <div className="text-center py-8 text-brand-dark/35 italic text-[11px] space-y-1">
+              <div className="text-center py-6 text-brand-dark/35 italic text-[11px] space-y-1">
                 <p>💡 Копим факты...</p>
                 <p className="text-[10px] max-w-[200px] mx-auto leading-normal">Представьтесь преподавателю, расскажите о вашей работе, хобби или целях обучения.</p>
               </div>
@@ -604,6 +607,31 @@ export default function LiveCall({
             )}
           </div>
         </div>
+
+        {/* Словарь урока */}
+        {vocabWords.length > 0 && (
+          <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm flex flex-col gap-2 max-h-56">
+            <div className="flex items-center gap-2 pb-1 border-b border-brand-sand/50 shrink-0">
+              <BookOpen className="w-3.5 h-3.5 text-brand-terracotta" />
+              <p className="text-[10px] font-bold uppercase tracking-wider text-brand-dark/50">Словарь урока</p>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+              {vocabWords.map((w) => (
+                <div key={w.id} className="py-1.5 border-b border-brand-sand/20 last:border-0 space-y-0.5">
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-semibold text-brand-dark">{w.text}</span>
+                    {w.transcription && (
+                      <span className="text-[9.5px] text-brand-dark/35 font-mono">{w.transcription}</span>
+                    )}
+                  </div>
+                  {w.translation && (
+                    <p className="text-[10px] text-brand-dark/45">{w.translation}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { UserStats as UserStatsType } from "../types";
-import { Award, Trash2, Calendar, Clock, BarChart3, Lightbulb } from "lucide-react";
+import { Award, Trash2, Clock, BarChart3, Lightbulb, BookOpen } from "lucide-react";
 import { motion } from "motion/react";
 
 interface UserStatsProps {
@@ -13,6 +13,7 @@ interface UserStatsProps {
   onClearHistory: () => void;
   onRemoveFact?: (index: number) => void;
   onAddManualFact?: (fact: string) => void;
+  onRemoveWord?: (id: string) => void;
 }
 
 export default function UserStats({
@@ -20,6 +21,7 @@ export default function UserStats({
   onClearHistory,
   onRemoveFact,
   onAddManualFact,
+  onRemoveWord,
 }: UserStatsProps) {
   const [activeTranscriptItem, setActiveTranscriptItem] = useState<any | null>(null);
 
@@ -59,7 +61,7 @@ export default function UserStats({
       
       {/* Краткие счетчики */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
+
         <div className="bg-white border border-brand-warm-gray p-6 rounded-[28px] shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-brand-light-gray flex items-center justify-center text-brand-terracotta shrink-0">
             <Clock className="w-5 h-5" />
@@ -80,9 +82,62 @@ export default function UserStats({
           </div>
         </div>
 
+        <div className="bg-white border border-brand-warm-gray p-6 rounded-[28px] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-brand-light-gray flex items-center justify-center text-brand-terracotta shrink-0">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Слов в словаре</span>
+            <p className="text-lg font-serif font-bold italic text-brand-olive">{(stats.vocabWords || []).length} слов</p>
+          </div>
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Словарь */}
+        <div className="lg:col-span-2 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-brand-sand/40 pb-3">
+            <BookOpen className="w-5 h-5 text-brand-terracotta" />
+            <h3 className="font-serif font-bold italic text-brand-olive text-base">Словарь урока</h3>
+          </div>
+
+          {(!stats.vocabWords || stats.vocabWords.length === 0) ? (
+            <div className="text-center py-8 text-[11px] text-brand-dark/40 italic">
+              Словарь пуст. Добавьте слова перед следующим уроком — ИИ будет отрабатывать их в разговоре.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {stats.vocabWords.map((w) => (
+                <div
+                  key={w.id}
+                  className="flex items-start justify-between gap-2 p-3 bg-brand-light-gray/30 border border-brand-sand/40 rounded-2xl group"
+                >
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="text-[12px] font-semibold text-brand-dark">{w.text}</span>
+                      {w.transcription && (
+                        <span className="text-[10px] text-brand-dark/40 font-mono">{w.transcription}</span>
+                      )}
+                    </div>
+                    {w.translation && (
+                      <p className="text-[10.5px] text-brand-dark/55">{w.translation}</p>
+                    )}
+                  </div>
+                  {onRemoveWord && (
+                    <button
+                      onClick={() => onRemoveWord(w.id)}
+                      className="text-brand-dark/25 hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0 mt-0.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Память обучения (Что помнит преподаватель) */}
         <div className="lg:col-span-1 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">

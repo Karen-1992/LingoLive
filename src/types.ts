@@ -37,12 +37,20 @@ export interface CallHistoryEntry {
   transcripts?: LiveTranscriptMessage[];
 }
 
+export interface VocabWord {
+  id: string;
+  text: string;
+  translation?: string;
+  transcription?: string;
+}
+
 export interface UserStats {
   totalDurationSeconds: number;
   completedCallsCount: number;
   history: CallHistoryEntry[];
   userFacts?: string[];
   conversationNotes?: string[];
+  vocabWords?: VocabWord[];
 }
 
 export interface LiveTranscriptMessage {

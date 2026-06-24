@@ -1,7 +1,9 @@
-import { Teacher } from "../types";
+import { useState, useRef } from "react";
+import { Teacher, VocabWord } from "../types";
 import { TEACHERS } from "../data/languages";
 import { GRAMMAR_TOPICS } from "../data/grammar";
-import { Volume2, Trash2, Check, Plus, Sparkles, Play, BookOpen } from "lucide-react";
+import { translateWord } from "../utils/translate";
+import { Volume2, Trash2, Check, Plus, Sparkles, Play, BookOpen, Languages, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 
 const LEVELS = [
@@ -20,6 +22,9 @@ interface Props {
   onAddManualFact: (text: string) => void;
   selectedGrammar: string[];
   setSelectedGrammar: (v: string[]) => void;
+  vocabWords: VocabWord[];
+  onAddWord: (word: VocabWord) => void;
+  onRemoveWord: (id: string) => void;
   onStartCall: () => void;
 }
 
@@ -43,8 +48,38 @@ export default function LessonSetup({
   onAddManualFact,
   selectedGrammar,
   setSelectedGrammar,
+  vocabWords,
+  onAddWord,
+  onRemoveWord,
   onStartCall,
 }: Props) {
+  const [wordInput, setWordInput] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [wordError, setWordError] = useState("");
+  const wordInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAddWord = async () => {
+    const input = wordInput.trim();
+    if (!input || isTranslating) return;
+    setIsTranslating(true);
+    setWordError("");
+    try {
+      const result = await translateWord(input);
+      onAddWord({
+        id: Date.now().toString(),
+        text: result.word,
+        transcription: result.transcription,
+        translation: result.translation,
+      });
+      setWordInput("");
+      wordInputRef.current?.focus();
+    } catch {
+      setWordError("Не удалось перевести. Попробуйте ещё раз.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const toggleGrammar = (label: string) => {
     setSelectedGrammar(
       selectedGrammar.includes(label)
@@ -183,6 +218,68 @@ export default function LessonSetup({
             )}
           </div>
 
+          {/* Vocabulary */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 flex items-center gap-1.5">
+              <Languages className="w-3.5 h-3.5 text-brand-terracotta" />
+              4. Словарь урока
+              <span className="text-brand-dark/40 normal-case font-normal tracking-normal ml-1">(необязательно)</span>
+            </label>
+            <p className="text-[10.5px] text-brand-dark/55 leading-relaxed">
+              Добавьте слова или фразы — ИИ будет вплетать их в разговор и следить за тем, чтобы вы их использовали.
+            </p>
+
+            {vocabWords.length > 0 && (
+              <div className="space-y-1.5">
+                {vocabWords.map((w) => (
+                  <div
+                    key={w.id}
+                    className="flex items-start justify-between gap-2 bg-brand-light-gray/50 border border-brand-sand/60 rounded-xl px-3 py-2 group"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-[12px] font-semibold text-brand-dark">{w.text}</span>
+                        {w.transcription && (
+                          <span className="text-[10px] text-brand-dark/40 font-mono">{w.transcription}</span>
+                        )}
+                      </div>
+                      {w.translation && (
+                        <p className="text-[10.5px] text-brand-dark/55">{w.translation}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onRemoveWord(w.id)}
+                      className="text-brand-dark/25 hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0 mt-0.5"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                ref={wordInputRef}
+                type="text"
+                value={wordInput}
+                onChange={(e) => { setWordInput(e.target.value); setWordError(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddWord(); } }}
+                placeholder="Слово или фраза на любом языке..."
+                className="flex-1 p-2 border border-brand-sand/70 rounded-xl text-[11px] bg-brand-light-gray/30 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-terracotta"
+              />
+              <button
+                onClick={handleAddWord}
+                disabled={!wordInput.trim() || isTranslating}
+                title="Перевести и добавить"
+                className="py-2 px-3 bg-brand-terracotta hover:bg-[#C16C48] text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-40 cursor-pointer shrink-0"
+              >
+                {isTranslating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            {wordError && <p className="text-[10.5px] text-red-500 italic">{wordError}</p>}
+          </div>
+
           {/* Start button */}
           <div className="pt-4 border-t border-brand-sand/60 flex justify-end">
             <motion.button
@@ -201,7 +298,7 @@ export default function LessonSetup({
 
       {/* Right column: Memory Panel */}
       <div className="space-y-6">
-        <div className="bg-white rounded-[32px] p-6 border border-brand-warm-gray shadow-sm h-full flex flex-col justify-between space-y-4">
+        <div className="bg-white rounded-[32px] p-6 border border-brand-warm-gray shadow-sm flex flex-col space-y-4">
           <div className="space-y-2 border-b border-brand-sand/50 pb-3">
             <h4 className="text-xs font-bold text-brand-olive uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-terracotta shrink-0 animate-pulse" />
@@ -267,6 +364,7 @@ export default function LessonSetup({
             </form>
           </div>
         </div>
+
       </div>
     </div>
   );
