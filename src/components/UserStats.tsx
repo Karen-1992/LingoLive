@@ -4,13 +4,12 @@
  */
 
 import { useState } from "react";
-import { UserStats as UserStatsType, VocabularyCard } from "../types";
-import { Award, BookOpen, Trash2, Calendar, Clock, BarChart3, Search, Lightbulb } from "lucide-react";
+import { UserStats as UserStatsType } from "../types";
+import { Award, Trash2, Calendar, Clock, BarChart3, Lightbulb } from "lucide-react";
 import { motion } from "motion/react";
 
 interface UserStatsProps {
   stats: UserStatsType;
-  onRemoveWord: (wordId: string) => void;
   onClearHistory: () => void;
   onRemoveFact?: (index: number) => void;
   onAddManualFact?: (fact: string) => void;
@@ -18,12 +17,10 @@ interface UserStatsProps {
 
 export default function UserStats({
   stats,
-  onRemoveWord,
   onClearHistory,
   onRemoveFact,
   onAddManualFact,
 }: UserStatsProps) {
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeTranscriptItem, setActiveTranscriptItem] = useState<any | null>(null);
 
   const formatDuration = (seconds: number) => {
@@ -33,14 +30,6 @@ export default function UserStats({
     return `${mins} мин ${secs} сек`;
   };
 
-  // Filter notebook
-  const filteredWords = stats.savedWords.filter(
-    (w) =>
-      w.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.translation.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // List of accomplishments based on student stats
   const achievements = [
     {
       id: "first_call",
@@ -55,13 +44,6 @@ export default function UserStats({
       desc: "Наговорить более 5 минут (300 секунд) по аудиосвязи.",
       unlocked: stats.totalDurationSeconds >= 300,
       icon: "⏱️",
-    },
-    {
-      id: "vocab_5",
-      title: "Лексикон",
-      desc: "Добавить 5 или более новых слов в персональный блокнот.",
-      unlocked: stats.savedWords.length >= 5,
-      icon: "📚",
     },
     {
       id: "polyglot",
@@ -98,76 +80,12 @@ export default function UserStats({
           </div>
         </div>
 
-        <div className="bg-white border border-brand-warm-gray p-6 rounded-[28px] shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-brand-light-gray flex items-center justify-center text-brand-terracotta shrink-0">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Слов в блокноте</span>
-            <p className="text-lg font-serif font-bold italic text-brand-olive">{stats.savedWords.length} выражений</p>
-          </div>
-        </div>
-
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Блокнот и Словари ученика */}
-        <div className="lg:col-span-2 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-brand-sand/40 pb-3">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-brand-terracotta" />
-              <h3 className="font-serif font-bold italic text-brand-olive text-base">Ваш словарный блокнот</h3>
-            </div>
-
-            {/* Поисковая строка */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-brand-dark/40 absolute left-3 top-3.5" />
-              <input
-                type="text"
-                placeholder="Найти слово..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="py-2 pl-9 pr-4 border border-brand-sand/70 bg-brand-light-gray/30 rounded-xl text-xs w-full sm:w-48 focus:outline-none focus:bg-white focus:ring-1 focus:ring-brand-terracotta"
-              />
-            </div>
-          </div>
-
-          {filteredWords.length === 0 ? (
-            <div className="text-center py-10 space-y-2">
-              <span className="text-2xl">✒️</span>
-              <p className="text-xs text-brand-dark/50">
-                {searchTerm ? "Ничего не найдено по вашему запросу." : "В блокноте пока нет слов. Сохраняйте карточки во время тренировки или добавляйте на уроке!"}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[340px] overflow-y-auto pr-1">
-              {filteredWords.map((word) => (
-                <div
-                  key={word.id}
-                  className="p-3 bg-brand-light-gray/25 rounded-xl border border-brand-sand/40 flex justify-between items-start hover:bg-brand-light-gray/40 transition-colors"
-                >
-                  <div className="space-y-1">
-                    <h4 className="font-serif font-bold italic text-brand-olive text-sm">{word.word}</h4>
-                    <p className="text-xs text-brand-dark/80">{word.translation}</p>
-                    {word.pronunciation && (
-                      <span className="text-[10px] font-mono text-brand-terracotta">[{word.pronunciation}]</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => onRemoveWord(word.id)}
-                    className="p-1 rounded-lg text-brand-dark/40 hover:text-brand-red hover:bg-brand-red/10 transition-colors shrink-0 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Память обучения (Что помнит преподаватель) */}
-        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
+        <div className="lg:col-span-1 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-brand-sand/40 pb-3">
             <Lightbulb className="w-5 h-5 text-brand-terracotta" />
             <h3 className="font-serif font-bold italic text-brand-olive text-base">Что помнит преподаватель</h3>

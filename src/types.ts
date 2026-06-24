@@ -3,21 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export interface VocabularyCard {
-  id: string;
-  word: string;
-  translation: string;
-  pronunciation?: string;
-  example: string;
-  exampleTranslation: string;
-}
-
 export interface Language {
   id: string;
-  name: string; // e.g., "Английский"
-  englishName: string; // e.g., "English"
-  flag: string; // emoji flag
-  code: string; // e.g., "en"
+  name: string;
+  englishName: string;
+  flag: string;
+  code: string;
 }
 
 export interface Teacher {
@@ -25,11 +16,11 @@ export interface Teacher {
   languageId: string;
   name: string;
   russianName: string;
-  avatar: string; // placeholder description or gender for avatar UI
-  persona: string; // short Russian description of personality
+  avatar: string;
+  persona: string;
   voiceName: "Puck" | "Charon" | "Kore" | "Fenrir" | "Zephyr" | "Aoede" | "Leda" | "Orus" | "Orion" | "Lyra";
-  systemInstruction: string; // base instruction for Gemini
-  greetings: string[]; // preset sample starting lines
+  systemInstruction: string;
+  greetings: string[];
 }
 
 export interface CallHistoryEntry {
@@ -50,7 +41,6 @@ export interface UserStats {
   totalDurationSeconds: number;
   completedCallsCount: number;
   history: CallHistoryEntry[];
-  savedWords: VocabularyCard[];
   userFacts?: string[];
   conversationNotes?: string[];
 }

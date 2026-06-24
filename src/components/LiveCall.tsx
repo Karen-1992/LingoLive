@@ -4,10 +4,10 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Language, Teacher, LiveTranscriptMessage, VocabularyCard } from "../types";
+import { Language, Teacher, LiveTranscriptMessage } from "../types";
 import { floatTo16BitPCM, arrayBufferToBase64, base64ToFloat32Array, downsampleBuffer } from "../utils/audio";
 import { createGeminiSession, GeminiLiveSession } from "../utils/geminiLive";
-import { PhoneOff, Mic, RefreshCw, Volume2, Plus, Check, MessagesSquare, Clock } from "lucide-react";
+import { PhoneOff, Mic, RefreshCw, Volume2, MessagesSquare, Clock } from "lucide-react";
 import { motion } from "motion/react";
 
 interface LiveCallProps {
@@ -16,12 +16,11 @@ interface LiveCallProps {
   level: string;
   topic: string;
   onHangUp: (durationSeconds: number, transcripts: LiveTranscriptMessage[]) => void;
-  onAddNoteWord: (word: VocabularyCard) => void;
-  savedWords: VocabularyCard[];
   userFacts?: string[];
   conversationNotes?: string[];
   onSaveFact?: (fact: string) => void;
   onSaveNote?: (note: string) => void;
+  practiceGrammar?: string[];
 }
 
 export default function LiveCall({
@@ -30,12 +29,11 @@ export default function LiveCall({
   level,
   topic,
   onHangUp,
-  onAddNoteWord,
-  savedWords,
   userFacts = [],
   conversationNotes = [],
   onSaveFact,
   onSaveNote,
+  practiceGrammar = [],
 }: LiveCallProps) {
   const [sessionStatus, setSessionStatus] = useState<"idle" | "connecting" | "active" | "error" | "closed">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -45,12 +43,6 @@ export default function LiveCall({
   const [teacherVolume, setTeacherVolume] = useState(0);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   
-  // Custom manual vocabulary jotter
-  const [newWord, setNewWord] = useState("");
-  const [newTranslation, setNewTranslation] = useState("");
-
-  // Sidebar tab control
-  const [sidebarTab, setSidebarTab] = useState<"notes" | "memory">("memory");
 
   // Low-level Ref handles
   const geminiSessionRef = useRef<GeminiLiveSession | null>(null);
@@ -152,6 +144,7 @@ export default function LiveCall({
           baseSystemPrompt: teacher.systemInstruction,
           userFacts,
           conversationNotes,
+          practiceGrammar,
         },
         {
           onAudio: (base64) => playTeacherAudioChunk(base64),
@@ -160,7 +153,6 @@ export default function LiveCall({
           onInterrupted: () => handleVoiceInterruption(),
           onSaveFact: (fact) => {
             onSaveFact?.(fact);
-            setSidebarTab("memory");
             setTranscripts((prev) => [...prev, {
               id: "fact_" + Date.now(), speaker: "system",
               text: `💡 Факт сохранён: "${fact}"`,
@@ -338,23 +330,6 @@ export default function LiveCall({
   const handleManualHangup = () => {
     cleanupSession();
     onHangUp(durationSeconds, transcripts);
-  };
-
-  // Add custom noted words to student vocabulary directory
-  const handleAddNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newWord.trim() || !newTranslation.trim()) return;
-
-    onAddNoteWord({
-      id: "note_" + Date.now(),
-      word: newWord.trim(),
-      translation: newTranslation.trim(),
-      example: "Добавлено на уроке",
-      exampleTranslation: `Разговор с ${teacher.name} (${language.name})`,
-    });
-
-    setNewWord("");
-    setNewTranslation("");
   };
 
   // Render responsive voice ripple wave SVG height
@@ -603,106 +578,29 @@ export default function LiveCall({
           </div>
         </div>
 
-        {/* Блокнот и Память ИИ */}
-        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm h-64 sm:h-80 flex flex-col justify-between">
-          <div className="flex border-b border-brand-sand/50 pb-2 gap-2">
-            <button
-              onClick={() => setSidebarTab("memory")}
-              className={`pb-2 px-3 text-xs font-bold uppercase tracking-wider relative transition-all cursor-pointer ${
-                sidebarTab === "memory" ? "text-brand-terracotta border-b-2 border-brand-terracotta" : "text-brand-dark/40 hover:text-brand-dark/75"
-              }`}
-            >
-              🧠 Память ИИ (Live)
-            </button>
-            <button
-              onClick={() => setSidebarTab("notes")}
-              className={`pb-2 px-3 text-xs font-bold uppercase tracking-wider relative transition-all cursor-pointer ${
-                sidebarTab === "notes" ? "text-brand-terracotta border-b-2 border-brand-terracotta" : "text-brand-dark/40 hover:text-brand-dark/75"
-              }`}
-            >
-              📝 Блокнот
-            </button>
-          </div>
-
-          <div className="flex-1 py-1 overflow-hidden flex flex-col justify-between mt-2">
-            {sidebarTab === "memory" ? (
-              <div className="flex-1 flex flex-col justify-between h-full">
-                <div className="space-y-0.5 pb-1">
-                  <p className="text-[10px] text-brand-dark/50 italic leading-relaxed">
-                    Здесь отображается то, что репетитор выделяет и записывает о вас во время разговора:
-                  </p>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto my-1 space-y-1.5 pr-1 scrollbar-thin max-h-[190px]">
-                  {userFacts.length === 0 ? (
-                    <div className="text-center py-8 text-brand-dark/35 italic text-[11px] space-y-1">
-                      <p>💡 Копим факты...</p>
-                      <p className="text-[10px] max-w-[200px] mx-auto leading-normal">Представьтесь преподавателю, расскажите о вашей работе, хобби или целях обучения.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {userFacts.map((fact, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="p-2 border border-brand-sand/40 bg-brand-light-gray/40 rounded-xl text-[11px] text-brand-dark flex items-start gap-1.5"
-                        >
-                          <span className="text-brand-terracotta shrink-0 mt-0.5">✨</span>
-                          <span className="leading-tight flex-1">{fact}</span>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+        {/* Память ИИ */}
+        <div className="bg-white border border-brand-warm-gray rounded-[32px] p-4 sm:p-6 shadow-sm h-64 sm:h-80 flex flex-col gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-dark/50 pb-1 border-b border-brand-sand/50">
+            🧠 Память ИИ
+          </p>
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+            {userFacts.length === 0 ? (
+              <div className="text-center py-8 text-brand-dark/35 italic text-[11px] space-y-1">
+                <p>💡 Копим факты...</p>
+                <p className="text-[10px] max-w-[200px] mx-auto leading-normal">Представьтесь преподавателю, расскажите о вашей работе, хобби или целях обучения.</p>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col justify-between h-full">
-                <form onSubmit={handleAddNote} className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Слово (напр. Awesome)"
-                      value={newWord}
-                      onChange={(e) => setNewWord(e.target.value)}
-                      className="p-2 border border-brand-sand/70 rounded-xl text-xs bg-brand-light-gray/20 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-terracotta"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Перевод"
-                      value={newTranslation}
-                      onChange={(e) => setNewTranslation(e.target.value)}
-                      className="p-2 border border-brand-sand/70 rounded-xl text-xs bg-brand-light-gray/20 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-terracotta"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-2 bg-brand-light-gray border border-brand-sand/70 text-brand-olive rounded-xl text-xs font-bold hover:bg-brand-warm-gray transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4 text-brand-terracotta" />
-                    Добавить в блокнот
-                  </button>
-                </form>
-
-                {/* Быстрые слова */}
-                <div className="overflow-y-auto max-h-[85px] pr-1 space-y-1 scrollbar-thin mt-2">
-                  {savedWords.length === 0 ? (
-                    <div className="text-[10px] text-brand-dark/30 italic text-center py-2">Ваш словарь урока пуст...</div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {savedWords.map((val) => (
-                        <span
-                          key={val.id}
-                          className="text-[10px] bg-brand-light-gray border border-brand-sand/60 text-brand-olive px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"
-                        >
-                          <Check className="w-3 h-3 text-brand-terracotta" />
-                          <strong>{val.word}</strong>: {val.translation}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              userFacts.map((fact, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="p-2 border border-brand-sand/40 bg-brand-light-gray/40 rounded-xl text-[11px] text-brand-dark flex items-start gap-1.5"
+                >
+                  <span className="text-brand-terracotta shrink-0 mt-0.5">✨</span>
+                  <span className="leading-tight flex-1">{fact}</span>
+                </motion.div>
+              ))
             )}
           </div>
         </div>

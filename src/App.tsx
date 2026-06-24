@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Teacher, VocabularyCard, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage } from "./types";
+import { Teacher, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage } from "./types";
 import { LANGUAGES, TEACHERS } from "./data/languages";
 import LiveCall from "./components/LiveCall";
 import UserStats from "./components/UserStats";
@@ -22,12 +22,12 @@ export default function App() {
   const [selectedLevel, setSelectedLevel] = useState("Средний (B1)");
   const [selectedTopic] = useState("Свободный разговор");
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER);
+  const [selectedGrammar, setSelectedGrammar] = useState<string[]>([]);
 
   const [stats, setStats] = useState<UserStatsType>({
     totalDurationSeconds: 0,
     completedCallsCount: 0,
     history: [],
-    savedWords: [],
   });
 
   useEffect(() => {
@@ -40,15 +40,6 @@ export default function App() {
   const saveStats = (updated: UserStatsType) => {
     setStats(updated);
     localStorage.setItem("lingo_live_stats", JSON.stringify(updated));
-  };
-
-  const handleAddNoteWord = (card: VocabularyCard) => {
-    if (stats.savedWords.some((w) => w.word.toLowerCase() === card.word.toLowerCase())) return;
-    saveStats({ ...stats, savedWords: [...stats.savedWords, card] });
-  };
-
-  const handleRemoveWord = (wordId: string) => {
-    saveStats({ ...stats, savedWords: stats.savedWords.filter((w) => w.id !== wordId) });
   };
 
   const handleClearHistory = () => {
@@ -196,6 +187,8 @@ export default function App() {
                   userFacts={stats.userFacts || []}
                   onRemoveFact={handleRemoveFact}
                   onAddManualFact={handleAddManualFact}
+                  selectedGrammar={selectedGrammar}
+                  setSelectedGrammar={setSelectedGrammar}
                   onStartCall={() => setLessonStep("calling")}
                 />
               )}
@@ -206,13 +199,12 @@ export default function App() {
                   teacher={selectedTeacher}
                   level={selectedLevel}
                   topic={selectedTopic}
-                  savedWords={stats.savedWords}
-                  onAddNoteWord={handleAddNoteWord}
                   onHangUp={handleHangUp}
                   userFacts={stats.userFacts || []}
                   conversationNotes={stats.conversationNotes || []}
                   onSaveFact={handleSaveFact}
                   onSaveNote={handleSaveNote}
+                  practiceGrammar={selectedGrammar}
                 />
               )}
             </motion.div>
@@ -228,7 +220,6 @@ export default function App() {
             >
               <UserStats
                 stats={stats}
-                onRemoveWord={handleRemoveWord}
                 onClearHistory={handleClearHistory}
                 onRemoveFact={handleRemoveFact}
                 onAddManualFact={handleAddManualFact}

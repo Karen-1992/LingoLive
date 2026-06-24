@@ -9,6 +9,7 @@ export interface GeminiSessionConfig {
   baseSystemPrompt: string;
   userFacts: string[];
   conversationNotes: string[];
+  practiceGrammar: string[];
 }
 
 export interface GeminiSessionCallbacks {
@@ -53,7 +54,7 @@ Guidelines for student level "Intermediate" (B1-B2):
 }
 
 function buildSystemInstruction(config: GeminiSessionConfig): string {
-  const { languageName, studentLevel, teacherName, baseSystemPrompt, userFacts, conversationNotes } = config;
+  const { languageName, studentLevel, teacherName, baseSystemPrompt, userFacts, conversationNotes, practiceGrammar } = config;
 
   let contextPrompt = "";
   if (userFacts.length > 0 || conversationNotes.length > 0) {
@@ -70,7 +71,17 @@ function buildSystemInstruction(config: GeminiSessionConfig): string {
 
   const levelInstructions = buildLevelInstructions(studentLevel, languageName);
 
-  return `${baseSystemPrompt}${contextPrompt}
+  let practicePrompt = "";
+  if (practiceGrammar.length > 0) {
+    practicePrompt += `\n\nGRAMMAR FOCUS FOR THIS SESSION:\n` +
+      practiceGrammar.map(g => `- ${g}`).join("\n") + `\n` +
+      `→ Actively use these grammar constructions in your own speech as natural examples. ` +
+      `When the student uses them correctly, briefly praise it ("Nice use of past perfect!"). ` +
+      `When they make mistakes with these specific constructions, correct immediately and model the right form. ` +
+      `If 2+ minutes pass without the student attempting the target grammar, find a natural way to prompt them.`;
+  }
+
+  return `${baseSystemPrompt}${contextPrompt}${practicePrompt}
 
 Strict Constraints:
 1. Speak EXCLUSIVELY in ${languageName} at ALL times. Never mix languages or repeat yourself in Russian unprompted.

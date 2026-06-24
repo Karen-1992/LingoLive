@@ -1,6 +1,7 @@
 import { Teacher } from "../types";
 import { TEACHERS } from "../data/languages";
-import { Volume2, Trash2, Check, Plus, Sparkles, Play } from "lucide-react";
+import { GRAMMAR_TOPICS } from "../data/grammar";
+import { Volume2, Trash2, Check, Plus, Sparkles, Play, BookOpen } from "lucide-react";
 import { motion } from "motion/react";
 
 const LEVELS = [
@@ -17,6 +18,8 @@ interface Props {
   userFacts: string[];
   onRemoveFact: (idx: number) => void;
   onAddManualFact: (text: string) => void;
+  selectedGrammar: string[];
+  setSelectedGrammar: (v: string[]) => void;
   onStartCall: () => void;
 }
 
@@ -38,8 +41,17 @@ export default function LessonSetup({
   userFacts,
   onRemoveFact,
   onAddManualFact,
+  selectedGrammar,
+  setSelectedGrammar,
   onStartCall,
 }: Props) {
+  const toggleGrammar = (label: string) => {
+    setSelectedGrammar(
+      selectedGrammar.includes(label)
+        ? selectedGrammar.filter((g) => g !== label)
+        : [...selectedGrammar, label]
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -109,7 +121,7 @@ export default function LessonSetup({
                   >
                     {isSelected && (
                       <div className="absolute top-0 right-0 bg-brand-terracotta text-white text-[9px] font-bold px-2.5 py-0.5 rounded-bl-xl uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                        <Check className="w-3 h-3 stroke-[3]" /> Выбран
+                        <Check className="w-3 h-3 stroke-3" /> Выбран
                       </div>
                     )}
                     <div className="relative shrink-0 mt-1">
@@ -135,6 +147,40 @@ export default function LessonSetup({
                 );
               })}
             </div>
+          </div>
+
+          {/* Grammar focus */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-brand-terracotta" />
+              3. Фокус на грамматике
+              <span className="text-brand-dark/40 normal-case font-normal tracking-normal ml-1">(необязательно)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {GRAMMAR_TOPICS.map((topic) => {
+                const isSelected = selectedGrammar.includes(topic.label);
+                return (
+                  <button
+                    key={topic.id}
+                    onClick={() => toggleGrammar(topic.label)}
+                    title={topic.description}
+                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-brand-terracotta text-white border-brand-terracotta shadow-sm"
+                        : "bg-white text-brand-dark/70 border-brand-sand/60 hover:border-brand-terracotta/40 hover:text-brand-dark"
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 inline mr-1 stroke-3" />}
+                    {topic.label}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedGrammar.length > 0 && (
+              <p className="text-[10.5px] text-brand-terracotta/80 italic">
+                ИИ будет активно использовать эти конструкции и поправлять ошибки в них
+              </p>
+            )}
           </div>
 
           {/* Start button */}
