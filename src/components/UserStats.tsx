@@ -99,7 +99,7 @@ export default function UserStats({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Мой словарь */}
-        <div className="lg:col-span-2 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
+        <div className="lg:col-span-1 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-brand-sand/40 pb-3">
             <BookOpen className="w-5 h-5 text-brand-terracotta" />
             <h3 className="font-serif font-bold italic text-brand-olive text-base">Мой словарь</h3>
@@ -134,7 +134,7 @@ export default function UserStats({
         </div>
 
         {/* Память обучения (Что помнит преподаватель) */}
-        <div className="lg:col-span-1 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
+        <div className="lg:col-span-2 bg-white border border-brand-warm-gray rounded-[32px] p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-brand-sand/40 pb-3">
             <div className="flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-brand-terracotta" />
