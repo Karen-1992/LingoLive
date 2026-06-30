@@ -43,13 +43,16 @@ export interface VocabWord {
   transcription?: string;
 }
 
-export interface UserStats {
+export interface LanguageStats {
   totalDurationSeconds: number;
   completedCallsCount: number;
+  memories: string[];
+  vocabWords: VocabWord[];
+}
+
+export interface UserStats {
   history: CallHistoryEntry[];
-  userFacts?: string[];
-  conversationNotes?: string[];
-  vocabWords?: VocabWord[];
+  byLanguage: Record<string, LanguageStats>;
 }
 
 export interface LiveTranscriptMessage {

@@ -4,28 +4,39 @@
  */
 
 import { useState } from "react";
-import { UserStats as UserStatsType } from "../types";
+import { Language, UserStats as UserStatsType } from "../types";
+import { LANGUAGES } from "../data/languages";
 import { Award, Trash2, Clock, BarChart3, Lightbulb, BookOpen } from "lucide-react";
 import { motion } from "motion/react";
 
 interface UserStatsProps {
   stats: UserStatsType;
+  viewLanguage: Language;
+  onSelectViewLanguage: (l: Language) => void;
   onClearHistory: () => void;
   onRemoveFact?: (index: number) => void;
   onAddManualFact?: (fact: string) => void;
-  onRemoveWord?: (id: string) => void;
   onClearMemory?: () => void;
 }
 
 export default function UserStats({
   stats,
+  viewLanguage,
+  onSelectViewLanguage,
   onClearHistory,
   onRemoveFact,
   onAddManualFact,
-  onRemoveWord,
   onClearMemory,
 }: UserStatsProps) {
   const [activeTranscriptItem, setActiveTranscriptItem] = useState<any | null>(null);
+
+  const langStats = stats.byLanguage[viewLanguage.id] || {
+    totalDurationSeconds: 0,
+    completedCallsCount: 0,
+    memories: [],
+    vocabWords: [],
+  };
+  const historyForLanguage = stats.history.filter((h) => h.languageId === viewLanguage.id);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -39,14 +50,14 @@ export default function UserStats({
       id: "first_call",
       title: "Первый Контакт",
       desc: "Сделать 1 успешный звонок иностранному преподавателю.",
-      unlocked: stats.completedCallsCount >= 1,
+      unlocked: langStats.completedCallsCount >= 1,
       icon: "📞",
     },
     {
       id: "talk_5min",
       title: "Разговорный Спринт",
       desc: "Наговорить более 5 минут (300 секунд) по аудиосвязи.",
-      unlocked: stats.totalDurationSeconds >= 300,
+      unlocked: langStats.totalDurationSeconds >= 300,
       icon: "⏱️",
     },
     {
@@ -61,6 +72,29 @@ export default function UserStats({
   return (
     <div className="space-y-6" id="user-stats-dashboard">
       
+      {/* Языковой переключатель */}
+      <div className="flex flex-wrap gap-2">
+        {LANGUAGES.map((lang) => {
+          const isSelected = viewLanguage.id === lang.id;
+          return (
+            <button
+              key={lang.id}
+              onClick={() => onSelectViewLanguage(lang)}
+              className={`px-3.5 py-2 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                isSelected
+                  ? "border-brand-terracotta bg-brand-light-gray/40 ring-2 ring-brand-terracotta/25"
+                  : "border-brand-sand/55 bg-white hover:border-brand-sand hover:bg-brand-cream/40"
+              }`}
+            >
+              <span className="text-base leading-none">{lang.flag}</span>
+              <span className={`text-[11px] font-bold ${isSelected ? "text-brand-terracotta" : "text-brand-olive"}`}>
+                {lang.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Краткие счетчики */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -69,8 +103,8 @@ export default function UserStats({
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Общее время практики</span>
-            <p className="text-lg font-serif font-bold italic text-brand-olive">{formatDuration(stats.totalDurationSeconds)}</p>
+            <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Время практики</span>
+            <p className="text-lg font-serif font-bold italic text-brand-olive">{formatDuration(langStats.totalDurationSeconds)}</p>
           </div>
         </div>
 
@@ -80,7 +114,7 @@ export default function UserStats({
           </div>
           <div>
             <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Пройдено звонков</span>
-            <p className="text-lg font-serif font-bold italic text-brand-olive">{stats.completedCallsCount} занятий</p>
+            <p className="text-lg font-serif font-bold italic text-brand-olive">{langStats.completedCallsCount} занятий</p>
           </div>
         </div>
 
@@ -90,7 +124,7 @@ export default function UserStats({
           </div>
           <div>
             <span className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-wider block">Слов в учебнике</span>
-            <p className="text-lg font-serif font-bold italic text-brand-olive">{(stats.vocabWords || []).length} слов</p>
+            <p className="text-lg font-serif font-bold italic text-brand-olive">{langStats.vocabWords.length} слов</p>
           </div>
         </div>
 
@@ -105,13 +139,13 @@ export default function UserStats({
             <h3 className="font-serif font-bold italic text-brand-olive text-base">Мой словарь</h3>
           </div>
 
-          {(!stats.vocabWords || stats.vocabWords.length === 0) ? (
+          {langStats.vocabWords.length === 0 ? (
             <div className="text-center py-8 text-[11px] text-brand-dark/40 italic">
               Словарь пуст. Добавьте слова перед уроком — ИИ будет отрабатывать их в разговоре.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {stats.vocabWords.map((w) => (
+              {langStats.vocabWords.map((w) => (
                 <div
                   key={w.id}
                   className="p-3 bg-brand-light-gray/30 border border-brand-sand/40 rounded-2xl"
@@ -140,7 +174,7 @@ export default function UserStats({
               <Lightbulb className="w-5 h-5 text-brand-terracotta" />
               <h3 className="font-serif font-bold italic text-brand-olive text-base">Что помнит преподаватель</h3>
             </div>
-            {[...(stats.userFacts || []), ...(stats.conversationNotes || [])].length > 0 && (
+            {langStats.memories.length > 0 && (
               <button
                 onClick={onClearMemory}
                 className="text-[10.5px] text-brand-dark/50 hover:text-brand-red underline font-medium cursor-pointer"
@@ -178,16 +212,13 @@ export default function UserStats({
               </button>
             </form>
 
-            {(() => {
-              const allMemories = [...(stats.userFacts || []), ...(stats.conversationNotes || [])];
-              return (
             <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {allMemories.length === 0 ? (
+              {langStats.memories.length === 0 ? (
                 <div className="p-3.5 rounded-2xl bg-brand-light-gray/20 border border-brand-sand/30 text-center py-6 text-[11px] text-brand-dark/50 italic leading-normal">
                   Память пуста. Преподаватель автоматически сохранит важное во время занятия!
                 </div>
               ) : (
-                allMemories.map((fact, index) => (
+                langStats.memories.map((fact, index) => (
                   <div
                     key={index}
                     className="p-2.5 bg-brand-light-gray/20 border border-brand-olive/10 rounded-xl flex justify-between items-center gap-2 text-xs"
@@ -204,8 +235,6 @@ export default function UserStats({
                 ))
               )}
             </div>
-            );
-            })()}
           </div>
         </div>
 
@@ -249,7 +278,7 @@ export default function UserStats({
             <Clock className="w-5 h-5 text-brand-terracotta" />
             <h3 className="font-serif font-bold italic text-brand-olive text-base">История ваших занятий</h3>
           </div>
-          {stats.history.length > 0 && (
+          {historyForLanguage.length > 0 && (
             <button
               onClick={onClearHistory}
               className="text-[10.5px] text-brand-dark/50 hover:text-brand-red underline font-medium cursor-pointer"
@@ -259,7 +288,7 @@ export default function UserStats({
           )}
         </div>
 
-        {stats.history.length === 0 ? (
+        {historyForLanguage.length === 0 ? (
           <div className="text-center py-8 text-xs text-brand-dark/40 italic">
             История звонков пока пуста. Сделайте первый аудиозвонок, чтобы записать урок!
           </div>
@@ -276,7 +305,7 @@ export default function UserStats({
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-sand/20 text-brand-dark/95">
-                {stats.history.map((item) => (
+                {historyForLanguage.map((item) => (
                   <tr
                     key={item.id}
                     title="Нажмите, чтобы прочитать полный транскрипт разговора"

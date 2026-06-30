@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Language, Teacher, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage, VocabWord } from "./types";
+import { Language, Teacher, UserStats as UserStatsType, LanguageStats, CallHistoryEntry, LiveTranscriptMessage, VocabWord } from "./types";
 import { LANGUAGES, TEACHERS } from "./data/languages";
 import LiveCall from "./components/LiveCall";
 import UserStats from "./components/UserStats";
@@ -15,6 +15,13 @@ import { motion, AnimatePresence } from "motion/react";
 const DEFAULT_LANGUAGE = LANGUAGES[0];
 const DEFAULT_TEACHER = TEACHERS[0];
 
+const emptyLanguageStats = (): LanguageStats => ({
+  totalDurationSeconds: 0,
+  completedCallsCount: 0,
+  memories: [],
+  vocabWords: [],
+});
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<"lesson" | "stats">("lesson");
   const [lessonStep, setLessonStep] = useState<"select_lang" | "calling">("select_lang");
@@ -23,6 +30,33 @@ export default function App() {
   const [selectedLevel, setSelectedLevel] = useState("Средний (B1)");
 const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER);
   const [selectedGrammar, setSelectedGrammar] = useState<string[]>([]);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    const local = localStorage.getItem("lingo_live_prefs");
+    if (local) {
+      try {
+        const prefs = JSON.parse(local);
+        const lang = LANGUAGES.find((l) => l.id === prefs.languageId) || DEFAULT_LANGUAGE;
+        const teacher = TEACHERS.find((t) => t.id === prefs.teacherId && t.languageId === lang.id)
+          || TEACHERS.find((t) => t.languageId === lang.id)
+          || DEFAULT_TEACHER;
+        setSelectedLanguage(lang);
+        setSelectedTeacher(teacher);
+        if (prefs.level) setSelectedLevel(prefs.level);
+      } catch {}
+    }
+    setPrefsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    localStorage.setItem("lingo_live_prefs", JSON.stringify({
+      languageId: selectedLanguage.id,
+      teacherId: selectedTeacher.id,
+      level: selectedLevel,
+    }));
+  }, [prefsLoaded, selectedLanguage, selectedTeacher, selectedLevel]);
 
   const handleSelectLanguage = (lang: Language) => {
     setSelectedLanguage(lang);
@@ -32,15 +66,36 @@ const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER)
   };
 
   const [stats, setStats] = useState<UserStatsType>({
-    totalDurationSeconds: 0,
-    completedCallsCount: 0,
     history: [],
+    byLanguage: {},
   });
+
+  const [statsLanguage, setStatsLanguage] = useState<Language>(DEFAULT_LANGUAGE);
 
   useEffect(() => {
     const local = localStorage.getItem("lingo_live_stats");
     if (local) {
-      try { setStats(JSON.parse(local)); } catch {}
+      try {
+        const parsed = JSON.parse(local);
+        // migrate legacy flat format (no byLanguage) — old data was always English-only
+        if (!parsed.byLanguage) {
+          const migrated: UserStatsType = {
+            history: parsed.history || [],
+            byLanguage: {
+              [DEFAULT_LANGUAGE.id]: {
+                totalDurationSeconds: parsed.totalDurationSeconds || 0,
+                completedCallsCount: parsed.completedCallsCount || 0,
+                memories: [...(parsed.userFacts || []), ...(parsed.conversationNotes || [])],
+                vocabWords: parsed.vocabWords || [],
+              },
+            },
+          };
+          setStats(migrated);
+          localStorage.setItem("lingo_live_stats", JSON.stringify(migrated));
+        } else {
+          setStats(parsed);
+        }
+      } catch {}
     }
   }, []);
 
@@ -49,54 +104,58 @@ const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER)
     localStorage.setItem("lingo_live_stats", JSON.stringify(updated));
   };
 
+  const getLangStats = (langId: string): LanguageStats =>
+    stats.byLanguage[langId] || emptyLanguageStats();
+
+  const updateLangStats = (langId: string, updater: (ls: LanguageStats) => LanguageStats) => {
+    const current = getLangStats(langId);
+    saveStats({ ...stats, byLanguage: { ...stats.byLanguage, [langId]: updater(current) } });
+  };
+
+  const activeLangStats = getLangStats(selectedLanguage.id);
+
   const handleClearHistory = () => {
-    saveStats({ ...stats, history: [] });
+    saveStats({ ...stats, history: stats.history.filter((h) => h.languageId !== statsLanguage.id) });
   };
 
   const handleSaveMemory = (memory: string) => {
-    setStats((prev) => {
-      const current = prev.userFacts || [];
-      if (current.includes(memory.trim())) return prev;
-      const updated = { ...prev, userFacts: [...current, memory.trim()] };
-      localStorage.setItem("lingo_live_stats", JSON.stringify(updated));
-      return updated;
-    });
+    updateLangStats(selectedLanguage.id, (ls) =>
+      ls.memories.includes(memory.trim()) ? ls : { ...ls, memories: [...ls.memories, memory.trim()] }
+    );
   };
 
   const handleRemoveFact = (indexToRemove: number) => {
-    const userFacts = stats.userFacts || [];
-    const conversationNotes = stats.conversationNotes || [];
-    if (indexToRemove < userFacts.length) {
-      saveStats({ ...stats, userFacts: userFacts.filter((_, i) => i !== indexToRemove) });
-    } else {
-      const noteIdx = indexToRemove - userFacts.length;
-      saveStats({ ...stats, conversationNotes: conversationNotes.filter((_, i) => i !== noteIdx) });
-    }
+    updateLangStats(statsLanguage.id, (ls) => ({
+      ...ls,
+      memories: ls.memories.filter((_, i) => i !== indexToRemove),
+    }));
   };
 
   const handleAddManualFact = (factText: string) => {
     if (!factText.trim()) return;
-    const currentFacts = stats.userFacts || [];
-    if (currentFacts.includes(factText.trim())) return;
-    saveStats({ ...stats, userFacts: [...currentFacts, factText.trim()] });
+    updateLangStats(statsLanguage.id, (ls) =>
+      ls.memories.includes(factText.trim()) ? ls : { ...ls, memories: [...ls.memories, factText.trim()] }
+    );
   };
 
   const handleClearMemory = () => {
-    saveStats({ ...stats, userFacts: [], conversationNotes: [] });
+    updateLangStats(statsLanguage.id, (ls) => ({ ...ls, memories: [] }));
   };
 
   const handleClearWords = () => {
-    saveStats({ ...stats, vocabWords: [] });
+    updateLangStats(selectedLanguage.id, (ls) => ({ ...ls, vocabWords: [] }));
   };
 
   const handleAddWord = (word: VocabWord) => {
-    const current = stats.vocabWords || [];
-    if (current.some((w) => w.text.trim().toLowerCase() === word.text.trim().toLowerCase())) return;
-    saveStats({ ...stats, vocabWords: [...current, word] });
+    updateLangStats(selectedLanguage.id, (ls) =>
+      ls.vocabWords.some((w) => w.text.trim().toLowerCase() === word.text.trim().toLowerCase())
+        ? ls
+        : { ...ls, vocabWords: [...ls.vocabWords, word] }
+    );
   };
 
   const handleRemoveWord = (id: string) => {
-    saveStats({ ...stats, vocabWords: (stats.vocabWords || []).filter((w) => w.id !== id) });
+    updateLangStats(selectedLanguage.id, (ls) => ({ ...ls, vocabWords: ls.vocabWords.filter((w) => w.id !== id) }));
   };
 
   const handleHangUp = (durationSeconds: number, transcripts: LiveTranscriptMessage[]) => {
@@ -120,25 +179,29 @@ transcriptsCount: filteredCount,
       transcripts,
     };
 
+    const langId = selectedLanguage.id;
+    const current = getLangStats(langId);
     saveStats({
       ...stats,
-      totalDurationSeconds: stats.totalDurationSeconds + durationSeconds,
-      completedCallsCount: stats.completedCallsCount + 1,
+      byLanguage: {
+        ...stats.byLanguage,
+        [langId]: {
+          ...current,
+          totalDurationSeconds: current.totalDurationSeconds + durationSeconds,
+          completedCallsCount: current.completedCallsCount + 1,
+        },
+      },
       history: [newEntry, ...stats.history],
     });
 
+    setStatsLanguage(selectedLanguage);
     setLessonStep("select_lang");
-    setSelectedLanguage(DEFAULT_LANGUAGE);
-    setSelectedTeacher(DEFAULT_TEACHER);
-    setSelectedLevel("Средний (B1)");
     setActiveTab("stats");
   };
 
   const handleGoToLesson = () => {
     setActiveTab("lesson");
     setLessonStep("select_lang");
-    setSelectedLanguage(DEFAULT_LANGUAGE);
-    setSelectedTeacher(DEFAULT_TEACHER);
   };
 
   return (
@@ -210,7 +273,7 @@ transcriptsCount: filteredCount,
                   setSelectedTeacher={setSelectedTeacher}
                   selectedGrammar={selectedGrammar}
                   setSelectedGrammar={setSelectedGrammar}
-                  vocabWords={stats.vocabWords || []}
+                  vocabWords={activeLangStats.vocabWords}
                   onAddWord={handleAddWord}
                   onRemoveWord={handleRemoveWord}
                   onClearWords={handleClearWords}
@@ -224,10 +287,10 @@ transcriptsCount: filteredCount,
                   teacher={selectedTeacher}
                   level={selectedLevel}
                   onHangUp={handleHangUp}
-                  memories={[...(stats.userFacts || []), ...(stats.conversationNotes || [])]}
+                  memories={activeLangStats.memories}
                   onSaveMemory={handleSaveMemory}
                   practiceGrammar={selectedGrammar}
-                  vocabWords={stats.vocabWords || []}
+                  vocabWords={activeLangStats.vocabWords}
                 />
               )}
             </motion.div>
@@ -243,10 +306,11 @@ transcriptsCount: filteredCount,
             >
               <UserStats
                 stats={stats}
+                viewLanguage={statsLanguage}
+                onSelectViewLanguage={setStatsLanguage}
                 onClearHistory={handleClearHistory}
                 onRemoveFact={handleRemoveFact}
                 onAddManualFact={handleAddManualFact}
-                onRemoveWord={handleRemoveWord}
                 onClearMemory={handleClearMemory}
               />
             </motion.div>
