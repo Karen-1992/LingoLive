@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Teacher, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage, VocabWord } from "./types";
+import { Language, Teacher, UserStats as UserStatsType, CallHistoryEntry, LiveTranscriptMessage, VocabWord } from "./types";
 import { LANGUAGES, TEACHERS } from "./data/languages";
 import LiveCall from "./components/LiveCall";
 import UserStats from "./components/UserStats";
@@ -19,9 +19,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"lesson" | "stats">("lesson");
   const [lessonStep, setLessonStep] = useState<"select_lang" | "calling">("select_lang");
 
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(DEFAULT_LANGUAGE);
   const [selectedLevel, setSelectedLevel] = useState("Средний (B1)");
 const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER);
   const [selectedGrammar, setSelectedGrammar] = useState<string[]>([]);
+
+  const handleSelectLanguage = (lang: Language) => {
+    setSelectedLanguage(lang);
+    setSelectedGrammar([]);
+    const firstTeacher = TEACHERS.find((t) => t.languageId === lang.id);
+    if (firstTeacher) setSelectedTeacher(firstTeacher);
+  };
 
   const [stats, setStats] = useState<UserStatsType>({
     totalDurationSeconds: 0,
@@ -96,9 +104,9 @@ const [selectedTeacher, setSelectedTeacher] = useState<Teacher>(DEFAULT_TEACHER)
 
     const newEntry: CallHistoryEntry = {
       id: "call_" + Date.now(),
-      languageId: DEFAULT_LANGUAGE.id,
+      languageId: selectedLanguage.id,
       teacherId: selectedTeacher.id,
-      languageName: DEFAULT_LANGUAGE.name,
+      languageName: selectedLanguage.name,
       teacherName: selectedTeacher.name,
       date: new Date().toLocaleString("ru-RU", {
         day: "numeric",
@@ -120,6 +128,7 @@ transcriptsCount: filteredCount,
     });
 
     setLessonStep("select_lang");
+    setSelectedLanguage(DEFAULT_LANGUAGE);
     setSelectedTeacher(DEFAULT_TEACHER);
     setSelectedLevel("Средний (B1)");
     setActiveTab("stats");
@@ -128,6 +137,7 @@ transcriptsCount: filteredCount,
   const handleGoToLesson = () => {
     setActiveTab("lesson");
     setLessonStep("select_lang");
+    setSelectedLanguage(DEFAULT_LANGUAGE);
     setSelectedTeacher(DEFAULT_TEACHER);
   };
 
@@ -192,6 +202,8 @@ transcriptsCount: filteredCount,
             >
               {lessonStep === "select_lang" && (
                 <LessonSetup
+                  selectedLanguage={selectedLanguage}
+                  onSelectLanguage={handleSelectLanguage}
                   selectedLevel={selectedLevel}
                   setSelectedLevel={setSelectedLevel}
                   selectedTeacher={selectedTeacher}
@@ -208,7 +220,7 @@ transcriptsCount: filteredCount,
 
               {lessonStep === "calling" && (
                 <LiveCall
-                  language={DEFAULT_LANGUAGE}
+                  language={selectedLanguage}
                   teacher={selectedTeacher}
                   level={selectedLevel}
                   onHangUp={handleHangUp}
@@ -245,7 +257,7 @@ transcriptsCount: filteredCount,
 
       <footer className="bg-white border-t border-brand-sand py-8 text-center text-xs text-brand-dark/50 mt-12">
         <div className="flex items-center justify-center gap-1.5 font-medium text-brand-dark/70">
-          Изучение английского языка <span className="font-serif italic font-bold">LingoLive</span> с ИИ • Создано с любовью к знаниям
+          Изучение языков <span className="font-serif italic font-bold">LingoLive</span> с ИИ • Создано с любовью к знаниям
           <Heart className="w-3.5 h-3.5 text-brand-red fill-brand-red" />
         </div>
         <p className="mt-2 text-brand-dark/40 max-w-md mx-auto">Для полноценной работы звонков требуется доступ к микрофону.</p>

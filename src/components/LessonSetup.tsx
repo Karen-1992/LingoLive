@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
-import { Teacher, VocabWord } from "../types";
-import { TEACHERS } from "../data/languages";
-import { GRAMMAR_TOPICS } from "../data/grammar";
+import { Language, Teacher, VocabWord } from "../types";
+import { LANGUAGES, TEACHERS } from "../data/languages";
+import { GRAMMAR_TOPICS_BY_LANGUAGE } from "../data/grammar";
 import { translateWord } from "../utils/translate";
 import { Volume2, Trash2, Check, Plus, Sparkles, Play, BookOpen, Languages, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
@@ -13,6 +13,8 @@ const LEVELS = [
 ];
 
 interface Props {
+  selectedLanguage: Language;
+  onSelectLanguage: (l: Language) => void;
   selectedLevel: string;
   setSelectedLevel: (v: string) => void;
   selectedTeacher: Teacher;
@@ -33,10 +35,14 @@ const ACCENT_MAP: Record<string, string> = {
   en_alex: "Американский акцент",
   en_olivia: "Австралийский акцент",
   en_marcus: "Британский акцент",
+  fi_aino: "Хельсинкский говор",
+  fi_eero: "Тамперский говор",
 };
 
 
 export default function LessonSetup({
+  selectedLanguage,
+  onSelectLanguage,
   selectedLevel,
   setSelectedLevel,
   selectedTeacher,
@@ -49,6 +55,8 @@ export default function LessonSetup({
   onClearWords,
   onStartCall,
 }: Props) {
+  const teachersForLanguage = TEACHERS.filter((t) => t.languageId === selectedLanguage.id);
+  const grammarTopicsForLanguage = GRAMMAR_TOPICS_BY_LANGUAGE[selectedLanguage.id] ?? [];
   const [wordInput, setWordInput] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
   const [wordError, setWordError] = useState("");
@@ -90,20 +98,48 @@ export default function LessonSetup({
           {/* Header */}
           <div className="space-y-4">
             <div className="inline-flex items-center gap-1.5 bg-brand-light-gray text-brand-olive py-1.5 px-4 rounded-full text-[11px] font-bold border border-brand-sand/30">
-              <Sparkles className="w-3.5 h-3.5 text-brand-terracotta" /> Голосовой агент английского языка
+              <Sparkles className="w-3.5 h-3.5 text-brand-terracotta" /> Голосовой агент: {selectedLanguage.name}
             </div>
             <h2 className="text-3xl font-serif font-bold italic text-brand-olive tracking-tight leading-tight">
               Персональная разговорная практика в реальном времени
             </h2>
             <p className="text-sm text-brand-dark/70 leading-relaxed">
-              Ваш ИИ-собеседник обучен живой непринужденной беседе. Выберите уровень и голос — преподаватель подстроится под ваш ритм.
+              Ваш ИИ-собеседник обучен живой непринужденной беседе. Выберите язык, уровень и голос — преподаватель подстроится под ваш ритм.
             </p>
+          </div>
+
+          {/* Language selector */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 block">
+              1. Какой язык изучаем
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {LANGUAGES.map((lang) => {
+                const isSelected = selectedLanguage.id === lang.id;
+                return (
+                  <button
+                    key={lang.id}
+                    onClick={() => onSelectLanguage(lang)}
+                    className={`px-4 py-2.5 rounded-2xl border flex items-center gap-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-brand-terracotta bg-brand-light-gray/40 ring-2 ring-brand-terracotta/25"
+                        : "border-brand-sand/55 bg-white hover:border-brand-sand hover:bg-brand-cream/40"
+                    }`}
+                  >
+                    <span className="text-lg leading-none">{lang.flag}</span>
+                    <span className={`text-xs font-bold ${isSelected ? "text-brand-terracotta" : "text-brand-olive"}`}>
+                      {lang.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Level selector */}
           <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 block">
-              1. Ваш уровень английского
+              2. Ваш текущий уровень
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {LEVELS.map((item) => {
@@ -131,13 +167,13 @@ export default function LessonSetup({
           {/* Teacher / Voice selector */}
           <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 block">
-              2. Выберите голос собеседника
+              3. Выберите голос собеседника
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {TEACHERS.map((teacher) => {
+              {teachersForLanguage.map((teacher) => {
                 const isSelected = selectedTeacher.id === teacher.id;
-                const accent = ACCENT_MAP[teacher.id] ?? "Английский акцент";
+                const accent = ACCENT_MAP[teacher.id];
                 return (
                   <div
                     key={teacher.id}
@@ -182,11 +218,11 @@ export default function LessonSetup({
           <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-brand-terracotta" />
-              3. Фокус на грамматике
+              4. Фокус на грамматике
               <span className="text-brand-dark/40 normal-case font-normal tracking-normal ml-1">(необязательно)</span>
             </label>
             <div className="flex flex-wrap gap-2">
-              {GRAMMAR_TOPICS.map((topic) => {
+              {grammarTopicsForLanguage.map((topic) => {
                 const isSelected = selectedGrammar.includes(topic.label);
                 return (
                   <button
@@ -217,7 +253,7 @@ export default function LessonSetup({
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-brand-olive/80 flex items-center gap-1.5">
                 <Languages className="w-3.5 h-3.5 text-brand-terracotta" />
-                4. Словарь урока
+                5. Словарь урока
                 <span className="text-brand-dark/40 normal-case font-normal tracking-normal ml-1">(необязательно)</span>
               </label>
               {vocabWords.length > 0 && (
